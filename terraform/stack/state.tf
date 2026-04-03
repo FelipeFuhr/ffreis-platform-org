@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------------------
 
 module "tf_state_runtime" {
-  source = "../../platform-terraform-modules/modules/s3-bucket"
+  source = "../../../ffreis-platform-terraform-modules/modules/s3-bucket"
 
   bucket             = "${var.org}-tf-state-runtime"
   versioning_enabled = true
@@ -41,7 +41,7 @@ module "tf_state_runtime" {
 }
 
 module "tf_locks_runtime" {
-  source = "../../platform-terraform-modules/modules/dynamodb-table"
+  source = "../../../ffreis-platform-terraform-modules/modules/dynamodb-table"
 
   name     = "${var.org}-tf-locks-runtime"
   hash_key = "LockID"

@@ -16,15 +16,40 @@ permissions:
 
 jobs:
   gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
-      security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-gitleaks.yml@c3e3e0a44d4b79697f1babaa9bf287d1b264da52
-    with:
-      working-directory: "."
-      scan-history: true
-      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: "8.24.3"
+        run: |
+          set -euo pipefail
+          url="https://github.com/zricethezav/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          curl --fail --show-error --silent --location \
+            --proto '=https' --proto-redir '=https' \
+            "$url" -o "$tmp/gitleaks.tgz"
+          tar -xzf "$tmp/gitleaks.tgz" -C "$tmp"
+          sudo install -m 0755 "$tmp/gitleaks" /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Run gitleaks
+        run: |
+          set -euo pipefail
+          if [[ -f ".gitleaks.toml" ]] && grep -qF '[[allowlist]]' .gitleaks.toml; then
+            echo "ERROR: .gitleaks.toml uses legacy '[[allowlist]]' (array) format."
+            echo "Gitleaks expects a single '[allowlist]' table (map)."
+            echo "Fix: merge the entries into one '[allowlist]' with combined 'regexes'/'paths'."
+            exit 1
+          fi
+          gitleaks detect --no-banner --redact --source .
 
   trivy-fs:
     permissions:

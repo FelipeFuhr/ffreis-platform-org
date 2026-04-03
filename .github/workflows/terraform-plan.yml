@@ -7,8 +7,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - "stack/**"
-      - "envs/**"
+      - "terraform/stack/**"
+      - "terraform/envs/**"
       - ".github/workflows/terraform-plan.yml"
 
 concurrency:
@@ -22,8 +22,8 @@ permissions:
 
 jobs:
   plan-prod:
-    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-plan.yml@main
+    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-plan.yml@e0cd54322d52fe7c522dd0bc2c46d56df2ceae43
     with:
       environment: "prod"
-      chdir: "stack"
+      chdir: "terraform/stack"
     secrets: inherit

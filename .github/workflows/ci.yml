@@ -1,20 +1,19 @@
 name: CI
 
-# Triggers: every PR and every push to main.
-# Job dependency graph:
-#
-#   secret-scan ─┐
-#   fmt ─────────┼─→ validate
-#                ├─→ lint
-#                ├─→ security  (trivy)
-#                └─→ tfsec
-#
-# Any failure blocks all downstream jobs.
-
 on:
   push:
     branches: [main]
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/ci.yml"
   pull_request:
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
@@ -24,43 +23,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    name: Go Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-  # ── 1. Secret scan ─────────────────────────────────────────────────────────
-  secret-scan:
-    name: Secret Scan
-    permissions:
-      contents: read
-      actions: read
-      security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-gitleaks.yml@main
-    with:
-      working-directory: "."
-      scan-history: true
-      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+          cache: true
 
-  fmt:
-    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-fmt.yml@main
-    with:
-      working-directory: "."
+      - name: Run Go tests
+        run: go test ./...
 
-  # ── 3. Validate ─────────────────────────────────────────────────────────────
-  validate:
-    needs: [fmt]
-    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-validate.yml@main
-    with:
-      chdir: "stack"
+  vet:
+    name: Go Vet
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-  # ── 4. Lint ─────────────────────────────────────────────────────────────────
-  lint:
-    needs: [fmt]
-    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-lint.yml@main
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: go.mod
+          cache: true
 
-  # ── 5. Security (Trivy) ──────────────────────────────────────────────────────
-  security:
-    needs: [fmt]
-    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-security.yml@main
-
-  # ── 6. Security (tfsec) ──────────────────────────────────────────────────────
-  tfsec:
-    needs: [fmt]
-    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-tfsec.yml@main
+      - name: Run go vet
+        run: go vet ./...

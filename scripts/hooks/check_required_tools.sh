@@ -2,7 +2,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-if [ "$#" -eq 0 ]; then
+if [[ "$#" -eq 0 ]]; then
   echo "Usage: $0 <tool> [tool...]" >&2
   exit 1
 fi
@@ -10,7 +10,9 @@ fi
 missing=0
 
 install_hint() {
-  case "$1" in
+  local tool_name="$1"
+
+  case "$tool_name" in
     terraform)
       echo "https://developer.hashicorp.com/terraform/downloads"
       ;;
@@ -24,9 +26,11 @@ install_hint() {
       echo "https://trivy.dev/latest/getting-started/installation/"
       ;;
     *)
-      echo "Install '$1' and ensure it is available in PATH."
+      echo "Install '${tool_name}' and ensure it is available in PATH."
       ;;
   esac
+
+  return 0
 }
 
 for tool in "$@"; do

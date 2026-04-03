@@ -35,10 +35,17 @@ FAIL="[ FAIL ]"
 errors=0
 
 fail() { echo "${FAIL} $*" >&2; errors=$((errors + 1)); }
-pass() { echo "${PASS} $*"; }
+pass() { echo "${PASS} $*"; return 0; }
 
 require_tool() {
-  command -v "$1" >/dev/null 2>&1 || { echo "Required tool not found: $1" >&2; exit 1; }
+  local tool_name="$1"
+
+  command -v "${tool_name}" >/dev/null 2>&1 || {
+    echo "Required tool not found: ${tool_name}" >&2
+    exit 1
+  }
+
+  return 0
 }
 
 require_tool aws
@@ -55,14 +62,14 @@ echo ""
 echo "--- 1. Organization ---"
 
 org_json="$(${AWS} organizations describe-organization 2>/dev/null || true)"
-if [ -z "${org_json}" ]; then
+if [[ -z "${org_json}" ]]; then
   fail "Organization not found or no access"
 else
   org_id="$(echo "${org_json}" | jq -r '.Organization.Id')"
   feature_set="$(echo "${org_json}" | jq -r '.Organization.FeatureSet')"
   pass "Organization found: ${org_id}"
 
-  if [ "${feature_set}" = "ALL" ]; then
+  if [[ "${feature_set}" == "ALL" ]]; then
     pass "FeatureSet=ALL (SCPs enabled)"
   else
     fail "FeatureSet=${feature_set} (expected ALL)"
@@ -70,7 +77,7 @@ else
 
   scp_enabled="$(${AWS} organizations list-roots | jq -r '
     .Roots[0].PolicyTypes[]? | select(.Type == "SERVICE_CONTROL_POLICY") | .Status')"
-  if [ "${scp_enabled}" = "ENABLED" ]; then
+  if [[ "${scp_enabled}" == "ENABLED" ]]; then
     pass "SERVICE_CONTROL_POLICY type is ENABLED on root"
   else
     fail "SERVICE_CONTROL_POLICY type is not enabled on root (status=${scp_enabled:-not found})"
@@ -87,13 +94,13 @@ echo "--- 2. Member accounts ---"
 expected_accounts=("development" "staging" "production")
 
 accounts_json="$(${AWS} organizations list-accounts 2>/dev/null || true)"
-if [ -z "${accounts_json}" ]; then
+if [[ -z "${accounts_json}" ]]; then
   fail "Could not list accounts"
 else
   for name in "${expected_accounts[@]}"; do
     account_id="$(echo "${accounts_json}" | jq -r \
       --arg name "${name}" '.Accounts[] | select(.Name == $name) | .Id')"
-    if [ -n "${account_id}" ]; then
+    if [[ -n "${account_id}" ]]; then
       status="$(echo "${accounts_json}" | jq -r \
         --arg name "${name}" '.Accounts[] | select(.Name == $name) | .Status')"
       pass "Account '${name}': ${account_id} (${status})"
@@ -118,14 +125,14 @@ expected_scps=(
 
 # Resolve environments OU ID
 env_ou_id=""
-if [ -n "${org_id:-}" ]; then
+if [[ -n "${org_id:-}" ]]; then
   root_id="$(${AWS} organizations list-roots | jq -r '.Roots[0].Id')"
   env_ou_id="$(${AWS} organizations list-organizational-units-for-parent \
     --parent-id "${root_id}" | \
     jq -r '.OrganizationalUnits[] | select(.Name == "environments") | .Id')"
 fi
 
-if [ -z "${env_ou_id}" ]; then
+if [[ -z "${env_ou_id}" ]]; then
   fail "Could not resolve environments OU ID"
 else
   pass "Environments OU found: ${env_ou_id}"
@@ -172,7 +179,7 @@ if ${AWS} s3api head-bucket --bucket "${runtime_bucket}" 2>/dev/null; then
 
   encryption="$(${AWS} s3api get-bucket-encryption --bucket "${runtime_bucket}" 2>/dev/null | \
     jq -r '.ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm // ""')"
-  if [ -n "${encryption}" ]; then
+  if [[ -n "${encryption}" ]]; then
     pass "Encryption enabled on ${runtime_bucket}: ${encryption}"
   else
     fail "Encryption not configured on ${runtime_bucket}"
@@ -184,7 +191,7 @@ fi
 table_status="$(${AWS} dynamodb describe-table \
   --table-name "${runtime_table}" 2>/dev/null | \
   jq -r '.Table.TableStatus // ""')"
-if [ "${table_status}" = "ACTIVE" ]; then
+if [[ "${table_status}" == "ACTIVE" ]]; then
   pass "DynamoDB table active: ${runtime_table}"
 else
   fail "DynamoDB table not found or not active: ${runtime_table} (status=${table_status:-not found})"
@@ -209,7 +216,7 @@ if ${AWS} s3api head-object \
   # Verify state contains expected resources
   state_content="$(${AWS} s3 cp \
     "s3://${root_bucket}/${state_key}" - 2>/dev/null || true)"
-  if [ -n "${state_content}" ]; then
+  if [[ -n "${state_content}" ]]; then
     resource_count="$(echo "${state_content}" | \
       jq '.resources | length' 2>/dev/null || echo 0)"
     pass "State readable, ${resource_count} resources tracked"
@@ -234,7 +241,7 @@ popd >/dev/null
 
 # ---------------------------------------------------------------------------
 echo ""
-if [ "${errors}" -eq 0 ]; then
+if [[ "${errors}" -eq 0 ]]; then
   echo "=== All checks passed ==="
   exit 0
 else

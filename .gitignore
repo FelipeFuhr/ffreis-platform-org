@@ -1,5 +1,6 @@
 /platform-org
 /atlantis.yaml
+.scannerwork
 
 # Legacy pre-migration root-level layout — keep local leftovers ignored.
 /envs/

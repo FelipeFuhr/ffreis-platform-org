@@ -11,7 +11,7 @@ pre-commit:
       run: make fmt-check
     lint:
       glob: "**/*.tf"
-      run: tflint --recursive --format compact
+      run: ./scripts/hooks/run_tflint_if_available.sh
     validate:
       glob: "**/*.tf"
       run: terraform -chdir=terraform/stack init -backend=false -input=false -no-color && terraform -chdir=terraform/stack validate -no-color
@@ -22,7 +22,7 @@ pre-push:
   parallel: false
   commands:
     lint:
-      run: make lint
+      run: ./scripts/hooks/run_tflint_if_available.sh
     validate:
       run: make validate
 

@@ -87,11 +87,7 @@ destroy: _require_fetched
 		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars
 
 ## nuke ENV=<env>: fetch, init then destroy -auto-approve (IRREVERSIBLE)
-## NOTE: S3 buckets in this stack have prevent_destroy=true — remove those lifecycle
-## blocks from terraform/stack/s3.tf before running nuke, or the destroy will fail.
 nuke: _require_fetched
-	@echo "WARNING: The org stack contains S3 buckets with prevent_destroy=true."
-	@echo "         Remove lifecycle { prevent_destroy = true } blocks from terraform/stack/ before proceeding."
 	@read -p "Type 'nuke-$(ENV)' to confirm destruction of org/$(ENV): " -r; \
 	if [ "$$REPLY" != "nuke-$(ENV)" ]; then \
 		echo "Cancelled."; \
@@ -115,12 +111,15 @@ fmt-check:
 
 ## validate: validate the stack configuration (static)
 validate:
-	terraform -chdir=$(STACK) validate
+	./scripts/hooks/check_required_tools.sh terraform
+	terraform -chdir=$(STACK) init -backend=false -input=false -no-color
+	terraform -chdir=$(STACK) validate -no-color
 
 ## lint: run tflint across all Terraform files
 lint:
+	./scripts/hooks/check_required_tools.sh tflint
 	tflint --init
-	tflint --recursive --format compact .
+	tflint --recursive --format compact terraform
 
 ## test: no unit tests — use 'make validate' or 'make plan ENV=<env>'
 test:

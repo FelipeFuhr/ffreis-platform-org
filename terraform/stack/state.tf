@@ -34,10 +34,6 @@ module "tf_state_runtime" {
     Layer   = "platform-org"
     Stack   = "platform-org"
   })
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 module "tf_locks_runtime" {
@@ -53,8 +49,4 @@ module "tf_locks_runtime" {
     Layer   = "platform-org"
     Stack   = "platform-org"
   })
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }

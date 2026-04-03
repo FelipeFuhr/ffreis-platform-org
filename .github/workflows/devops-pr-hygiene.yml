@@ -39,6 +39,7 @@ jobs:
       rules-json: |-
         [
           {"label":"ci","patterns":[".github/workflows/**",".github/actions/**"]},
+          {"label":"go","patterns":["**/*.go","go.mod","go.sum"]},
           {"label":"terraform","patterns":["terraform/**","**/*.tf","**/*.tfvars"]},
           {"label":"docs","patterns":["**/*.md"]}
         ]

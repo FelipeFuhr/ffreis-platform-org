@@ -3,10 +3,31 @@ package cmd
 import (
 	"testing"
 
-	taggingtypes "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
-
 	sdkaws "github.com/aws/aws-sdk-go-v2/aws"
+	taggingtypes "github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi/types"
 )
+
+func testTag(key, value string) taggingtypes.Tag {
+	return taggingtypes.Tag{
+		Key:   sdkaws.String(key),
+		Value: sdkaws.String(value),
+	}
+}
+
+func testResourceTagMapping(arn string, tags ...taggingtypes.Tag) taggingtypes.ResourceTagMapping {
+	return taggingtypes.ResourceTagMapping{
+		ResourceARN: sdkaws.String(arn),
+		Tags:        tags,
+	}
+}
+
+func assertAuditStatus(t *testing.T, r auditResource, want string) {
+	t.Helper()
+
+	if r.status != want {
+		t.Errorf("want %s got %q", want, r.status)
+	}
+}
 
 func TestParseARN(t *testing.T) {
 	cases := []struct {
@@ -55,83 +76,62 @@ func TestParseARN(t *testing.T) {
 }
 
 func TestClassifyResource_Bootstrap(t *testing.T) {
-	m := taggingtypes.ResourceTagMapping{
-		ResourceARN: sdkaws.String("arn:aws:dynamodb:us-east-1:123:table/ffreis-bootstrap-registry"),
-		Tags: []taggingtypes.Tag{
-			{Key: sdkaws.String("Layer"), Value: sdkaws.String("bootstrap")},
-			{Key: sdkaws.String("ManagedBy"), Value: sdkaws.String("platform-bootstrap")},
-		},
-	}
+	m := testResourceTagMapping(
+		"arn:aws:dynamodb:us-east-1:123:table/ffreis-bootstrap-registry",
+		testTag("Layer", "bootstrap"),
+		testTag("ManagedBy", "platform-bootstrap"),
+	)
 	r := classifyResource(m)
-	if r.status != "OK" {
-		t.Errorf("want OK got %q", r.status)
-	}
+	assertAuditStatus(t, r, "OK")
 	if r.stack != "(bootstrap)" {
 		t.Errorf("want (bootstrap) got %q", r.stack)
 	}
 }
 
 func TestClassifyResource_OwnedAllTags(t *testing.T) {
-	m := taggingtypes.ResourceTagMapping{
-		ResourceARN: sdkaws.String("arn:aws:s3:::ffreis-tf-state-runtime"),
-		Tags: []taggingtypes.Tag{
-			{Key: sdkaws.String("Stack"), Value: sdkaws.String("platform-org")},
-			{Key: sdkaws.String("Project"), Value: sdkaws.String("platform")},
-			{Key: sdkaws.String("Environment"), Value: sdkaws.String("prod")},
-			{Key: sdkaws.String("ManagedBy"), Value: sdkaws.String("terraform")},
-		},
-	}
+	m := testResourceTagMapping(
+		"arn:aws:s3:::ffreis-tf-state-runtime",
+		testTag("Stack", "platform-org"),
+		testTag("Project", "platform"),
+		testTag("Environment", "prod"),
+		testTag("ManagedBy", "terraform"),
+	)
 	r := classifyResource(m)
-	if r.status != "OK" {
-		t.Errorf("want OK got %q", r.status)
-	}
+	assertAuditStatus(t, r, "OK")
 	if len(r.issues) != 0 {
 		t.Errorf("want no issues got %v", r.issues)
 	}
 }
 
 func TestClassifyResource_OwnedMissingTag(t *testing.T) {
-	m := taggingtypes.ResourceTagMapping{
-		ResourceARN: sdkaws.String("arn:aws:s3:::ffreis-tf-state-runtime"),
-		Tags: []taggingtypes.Tag{
-			{Key: sdkaws.String("Stack"), Value: sdkaws.String("flemming")},
-			// Missing: Project, Environment, ManagedBy
-		},
-	}
+	m := testResourceTagMapping(
+		"arn:aws:s3:::ffreis-tf-state-runtime",
+		testTag("Stack", "flemming"),
+	)
 	r := classifyResource(m)
-	if r.status != "WARN" {
-		t.Errorf("want WARN got %q", r.status)
-	}
+	assertAuditStatus(t, r, "WARN")
 	if len(r.issues) == 0 {
 		t.Error("want issues for missing tags")
 	}
 }
 
 func TestClassifyResource_Unowned(t *testing.T) {
-	m := taggingtypes.ResourceTagMapping{
-		ResourceARN: sdkaws.String("arn:aws:s3:::some-manual-bucket"),
-		Tags: []taggingtypes.Tag{
-			{Key: sdkaws.String("Name"), Value: sdkaws.String("manual")},
-		},
-	}
+	m := testResourceTagMapping(
+		"arn:aws:s3:::some-manual-bucket",
+		testTag("Name", "manual"),
+	)
 	r := classifyResource(m)
-	if r.status != "UNOWNED" {
-		t.Errorf("want UNOWNED got %q", r.status)
-	}
+	assertAuditStatus(t, r, "UNOWNED")
 }
 
 func TestClassifyResource_UnknownStack(t *testing.T) {
-	m := taggingtypes.ResourceTagMapping{
-		ResourceARN: sdkaws.String("arn:aws:lambda:us-east-1:123:function:rogue-lambda"),
-		Tags: []taggingtypes.Tag{
-			{Key: sdkaws.String("Stack"), Value: sdkaws.String("unknown-project")},
-			{Key: sdkaws.String("ManagedBy"), Value: sdkaws.String("terraform")},
-		},
-	}
+	m := testResourceTagMapping(
+		"arn:aws:lambda:us-east-1:123:function:rogue-lambda",
+		testTag("Stack", "unknown-project"),
+		testTag("ManagedBy", "terraform"),
+	)
 	r := classifyResource(m)
-	if r.status != "UNOWNED" {
-		t.Errorf("want UNOWNED for unknown Stack value, got %q", r.status)
-	}
+	assertAuditStatus(t, r, "UNOWNED")
 }
 
 func TestIsKnownStack(t *testing.T) {

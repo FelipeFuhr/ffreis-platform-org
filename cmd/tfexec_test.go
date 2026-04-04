@@ -46,7 +46,7 @@ func TestIsInitialised(t *testing.T) {
 }
 
 func TestCaptureOutputReturnsStreamsAndExitCode(t *testing.T) {
-	setupFakeTerraform(t, "printf 'stdout:%s\n' "$*"; printf 'stderr:%s\n' "$AWS_ACCESS_KEY_ID" >&2; exit 2")
+	setupFakeTerraform(t, `printf 'stdout:%s\n' "$*"; printf 'stderr:%s\n' "$AWS_ACCESS_KEY_ID" >&2; exit 2`)
 
 	stdout, stderr, code, err := captureOutput(context.Background(), runOptions{
 		stackPath: t.TempDir(),
@@ -78,7 +78,7 @@ func TestTerraformInitUsesBackendArgs(t *testing.T) {
 	writeFile(t, filepath.Join(stack, "backend.local.hcl"), "bucket = \"local\"\n")
 	traceFile := filepath.Join(t.TempDir(), "trace.txt")
 	t.Setenv("TRACE_FILE", traceFile)
-	setupFakeTerraform(t, "printf '%s\n' "$*" > "$TRACE_FILE"")
+	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 
 	err := terraformInit(context.Background(), stack, root, "prod", rawCreds{Region: "us-east-1"})
 	if err != nil {
@@ -110,7 +110,7 @@ func TestEnsureInitRunsInitWhenNeeded(t *testing.T) {
 	stack := initRepoLayout(t, root, "prod")
 	traceFile := filepath.Join(t.TempDir(), "trace.txt")
 	t.Setenv("TRACE_FILE", traceFile)
-	setupFakeTerraform(t, "printf '%s\n' "$1" > "$TRACE_FILE"")
+	setupFakeTerraform(t, `printf '%s\n' "$1" > "$TRACE_FILE"`)
 
 	if err := ensureInit(context.Background(), stack, root, "prod", rawCreds{Region: "us-east-1"}); err != nil {
 		t.Fatalf("ensureInit: %v", err)

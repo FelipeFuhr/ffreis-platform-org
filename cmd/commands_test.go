@@ -18,7 +18,7 @@ func TestPlanCommandAllowsDetailedExitCodeTwo(t *testing.T) {
 	}
 	traceFile := filepath.Join(t.TempDir(), "trace.txt")
 	t.Setenv("TRACE_FILE", traceFile)
-	setupFakeTerraform(t, "printf '%s\n' "$*" > "$TRACE_FILE"; exit 2")
+	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"; exit 2`)
 	withWorkingDir(t, root)
 	planCmd.SetContext(context.Background())
 
@@ -46,7 +46,7 @@ func TestApplyCommandAddsAutoApprove(t *testing.T) {
 	}
 	traceFile := filepath.Join(t.TempDir(), "trace.txt")
 	t.Setenv("TRACE_FILE", traceFile)
-	setupFakeTerraform(t, "printf '%s\n' "$*" > "$TRACE_FILE"")
+	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 	withWorkingDir(t, root)
 	applyCmd.SetContext(context.Background())
 	old := applyAutoApprove
@@ -74,7 +74,7 @@ func TestNukeCommandCancelsOnUnexpectedConfirmation(t *testing.T) {
 	initRepoLayout(t, root, "prod")
 	traceFile := filepath.Join(t.TempDir(), "trace.txt")
 	t.Setenv("TRACE_FILE", traceFile)
-	setupFakeTerraform(t, "printf '%s\n' "$*" > "$TRACE_FILE"")
+	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 	withWorkingDir(t, root)
 	setStdinText(t, "nope\n")
 	nukeCmd.SetContext(context.Background())
@@ -98,7 +98,7 @@ func TestNukeCommandRunsDestroyAfterConfirmation(t *testing.T) {
 	}
 	traceFile := filepath.Join(t.TempDir(), "trace.txt")
 	t.Setenv("TRACE_FILE", traceFile)
-	setupFakeTerraform(t, "printf '%s\n' "$*" > "$TRACE_FILE"")
+	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 	withWorkingDir(t, root)
 	setStdinText(t, "destroy-prod\n")
 	nukeCmd.SetContext(context.Background())

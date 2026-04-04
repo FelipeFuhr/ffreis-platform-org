@@ -14,9 +14,7 @@ is_allowlisted() {
   return $?
 }
 
-while IFS= read -r -d '' entry; do
-  IFS=$'\t' read -r added deleted file <<<"$entry"
-
+while IFS=$'\t' read -r added deleted file; do
   if [[ "$added" != "-" || "$deleted" != "-" ]]; then
     continue
   fi
@@ -27,7 +25,7 @@ while IFS= read -r -d '' entry; do
 
   common_err "Unexpected staged binary file: ${file}"
   has_error=1
-done < <(git diff --cached --numstat --diff-filter=ACM -z)
+done < <(git diff --cached --numstat --diff-filter=ACM)
 
 if [[ "$has_error" -ne 0 ]]; then
   common_err "Binary files are blocked unless they match allowlisted paths/extensions."

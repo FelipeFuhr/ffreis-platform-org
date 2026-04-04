@@ -5,9 +5,9 @@ variable "aws_region" {
 }
 
 variable "aws_profile" {
-  description = "AWS CLI profile to use for the management account."
+  description = "AWS CLI profile to use for the management account. Set to null when using injected environment credentials (AWS_ACCESS_KEY_ID etc.)."
   type        = string
-  default     = "bootstrap"
+  default     = null
 }
 
 variable "org" {

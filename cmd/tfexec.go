@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // stackDir and envsDir define the terraform project layout for this repo.
@@ -15,10 +16,16 @@ const (
 	envsDirName  = "terraform/envs"
 )
 
-// repoRoot returns the absolute path to the repository root (the directory
-// containing this binary's working directory, i.e. where the CLI is run from).
+// repoRoot returns the absolute path to the repository root, resolved via
+// `git rev-parse --show-toplevel` so the CLI works correctly when invoked
+// from any subdirectory of the repository.
 func repoRoot() (string, error) {
-	return filepath.Abs(".")
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		// Fall back to the working directory if git is unavailable.
+		return filepath.Abs(".")
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // stackDir returns the absolute path to the terraform stack directory.
@@ -31,9 +38,11 @@ func stackDir() (string, error) {
 }
 
 // backendArgs builds the -backend-config flags for terraform init.
-// If terraform/stack/backend.local.hcl exists (gitignored, contains real
-// bucket/table),
-// it is passed first so its values override the committed backend.hcl key.
+// If terraform/stack/backend.local.hcl exists (gitignored, contains the real
+// bucket/table/region), it is prepended before the env backend config. The
+// env-specific terraform/envs/<env>/backend.hcl is passed after and supplies
+// the per-environment state key. Later flags take precedence in Terraform, so
+// the env key always wins over any key in the local override file.
 func backendArgs(stackPath, root, env string) []string {
 	envsBackend := filepath.Join(root, envsDirName, env, "backend.hcl")
 	// Paths are relative to the stack dir since terraform runs there.

@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-AWS="aws --profile ${PROFILE} --output json"
+AWS=(aws --profile "${PROFILE}" --output json)
 PASS="[ PASS ]"
 FAIL="[ FAIL ]"
 errors=0
@@ -61,7 +61,7 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "--- 1. Organization ---"
 
-org_json="$(${AWS} organizations describe-organization 2>/dev/null || true)"
+org_json="$(${AWS[@]} organizations describe-organization 2>/dev/null || true)"
 if [[ -z "${org_json}" ]]; then
   fail "Organization not found or no access"
 else
@@ -75,7 +75,7 @@ else
     fail "FeatureSet=${feature_set} (expected ALL)"
   fi
 
-  scp_enabled="$(${AWS} organizations list-roots | jq -r '
+  scp_enabled="$(${AWS[@]} organizations list-roots | jq -r '
     .Roots[0].PolicyTypes[]? | select(.Type == "SERVICE_CONTROL_POLICY") | .Status')"
   if [[ "${scp_enabled}" == "ENABLED" ]]; then
     pass "SERVICE_CONTROL_POLICY type is ENABLED on root"
@@ -100,7 +100,7 @@ if [[ ${#expected_accounts[@]} -eq 0 ]]; then
   expected_accounts=("development" "staging" "production")
 fi
 
-accounts_json="$(${AWS} organizations list-accounts 2>/dev/null || true)"
+accounts_json="$(${AWS[@]} organizations list-accounts --no-paginate 2>/dev/null || true)"
 if [[ -z "${accounts_json}" ]]; then
   fail "Could not list accounts"
 else
@@ -133,8 +133,8 @@ expected_scps=(
 # Resolve environments OU ID
 env_ou_id=""
 if [[ -n "${org_id:-}" ]]; then
-  root_id="$(${AWS} organizations list-roots | jq -r '.Roots[0].Id')"
-  env_ou_id="$(${AWS} organizations list-organizational-units-for-parent \
+  root_id="$(${AWS[@]} organizations list-roots | jq -r '.Roots[0].Id')"
+  env_ou_id="$(${AWS[@]} organizations list-organizational-units-for-parent \
     --parent-id "${root_id}" | \
     jq -r '.OrganizationalUnits[] | select(.Name == "environments") | .Id')"
 fi
@@ -144,7 +144,7 @@ if [[ -z "${env_ou_id}" ]]; then
 else
   pass "Environments OU found: ${env_ou_id}"
 
-  attached_scps="$(${AWS} organizations list-policies-for-target \
+  attached_scps="$(${AWS[@]} organizations list-policies-for-target \
     --target-id "${env_ou_id}" \
     --filter SERVICE_CONTROL_POLICY | jq -r '.Policies[].Name')"
 
@@ -164,24 +164,25 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "--- 4. Runtime backend ---"
 
-# Read org from fetched config first, then fall back to committed tfvars.
-org="$(jq -r '.org // empty' "${ENVS_DIR}/${ENV}/fetched.auto.tfvars.json" 2>/dev/null || true)"
-if [[ -z "${org}" ]]; then
-  org="$(grep '^org' "${ENVS_DIR}/${ENV}/terraform.tfvars" | \
-    sed 's/.*=\s*"\(.*\)"/\1/' || true)"
+# Read org from fetched config (fetched.auto.tfvars.json is required for the
+# runtime backend check — the committed terraform.tfvars does not contain org).
+fetched_json="${ENVS_DIR}/${ENV}/fetched.auto.tfvars.json"
+if [[ ! -f "${fetched_json}" ]]; then
+  fail "fetched.auto.tfvars.json not found at ${fetched_json} — run 'make fetch ENV=${ENV}' first"
+  exit 1
 fi
+org="$(jq -r '.org // empty' "${fetched_json}" 2>/dev/null || true)"
 if [[ -z "${org}" ]]; then
-  fail "Could not determine 'org': neither fetched.auto.tfvars.json nor terraform.tfvars provided it"
-  echo "       Run 'make fetch ENV=${ENV}' to populate fetched.auto.tfvars.json" >&2
+  fail "Could not determine 'org' from ${fetched_json} — ensure it contains an 'org' field"
   exit 1
 fi
 runtime_bucket="${org}-tf-state-runtime"
 runtime_table="${org}-tf-locks-runtime"
 
-if ${AWS} s3api head-bucket --bucket "${runtime_bucket}" 2>/dev/null; then
+if ${AWS[@]} s3api head-bucket --bucket "${runtime_bucket}" 2>/dev/null; then
   pass "S3 bucket exists: ${runtime_bucket}"
 
-  versioning="$(${AWS} s3api get-bucket-versioning --bucket "${runtime_bucket}" | \
+  versioning="$(${AWS[@]} s3api get-bucket-versioning --bucket "${runtime_bucket}" | \
     jq -r '.Status // "Disabled"')"
   if [[ "${versioning}" == "Enabled" ]]; then
     pass "Versioning enabled on ${runtime_bucket}"
@@ -189,7 +190,7 @@ if ${AWS} s3api head-bucket --bucket "${runtime_bucket}" 2>/dev/null; then
     fail "Versioning not enabled on ${runtime_bucket} (status=${versioning})"
   fi
 
-  encryption="$(${AWS} s3api get-bucket-encryption --bucket "${runtime_bucket}" 2>/dev/null | \
+  encryption="$(${AWS[@]} s3api get-bucket-encryption --bucket "${runtime_bucket}" 2>/dev/null | \
     jq -r '.ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm // ""')"
   if [[ -n "${encryption}" ]]; then
     pass "Encryption enabled on ${runtime_bucket}: ${encryption}"
@@ -200,7 +201,7 @@ else
   fail "S3 bucket not found: ${runtime_bucket}"
 fi
 
-table_status="$(${AWS} dynamodb describe-table \
+table_status="$(${AWS[@]} dynamodb describe-table \
   --table-name "${runtime_table}" 2>/dev/null | \
   jq -r '.Table.TableStatus // ""')"
 if [[ "${table_status}" == "ACTIVE" ]]; then
@@ -222,19 +223,19 @@ if [[ ! -f "${backend_hcl}" ]]; then
   fail "backend.local.hcl not found at ${backend_hcl} — run 'make fetch ENV=${ENV}' first"
   exit 1
 fi
-root_bucket="$(awk -F'=' '/^bucket/ { gsub(/[[:space:]"]+/, "", $2); print $2 }' "${backend_hcl}")"
+root_bucket="$(awk -F'=' '/^[[:space:]]*bucket[[:space:]]*=/ { gsub(/[[:space:]"]+/, "", $2); print $2 }' "${backend_hcl}")"
 if [[ -z "${root_bucket}" ]]; then
   fail "Could not parse 'bucket' from ${backend_hcl}"
   exit 1
 fi
 
-if ${AWS} s3api head-object \
+if ${AWS[@]} s3api head-object \
     --bucket "${root_bucket}" \
     --key "${state_key}" >/dev/null 2>&1; then
   pass "State file exists: s3://${root_bucket}/${state_key}"
 
   # Verify state contains expected resources
-  state_content="$(${AWS} s3 cp \
+  state_content="$(${AWS[@]} s3 cp \
     "s3://${root_bucket}/${state_key}" - 2>/dev/null || true)"
   if [[ -n "${state_content}" ]]; then
     resource_count="$(echo "${state_content}" | \
@@ -252,6 +253,9 @@ fi
 echo ""
 echo "--- terraform validate ---"
 pushd "${STACK_DIR}" >/dev/null
+if [[ ! -d ".terraform" ]]; then
+  terraform init -backend=false -input=false -no-color >/dev/null 2>&1 || true
+fi
 if terraform validate -no-color 2>&1; then
   pass "terraform validate passed"
 else

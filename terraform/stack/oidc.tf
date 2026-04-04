@@ -2,12 +2,17 @@
 # GitHub Actions OIDC provider
 #
 # Created once in the management account. All projects reference it via a
-# data source. The thumbprint is GitHub's well-known certificate fingerprint.
+# data source. The thumbprint is fetched dynamically from GitHub's OIDC
+# endpoint so it remains valid after certificate rotations.
 # ---------------------------------------------------------------------------
+data "tls_certificate" "github_oidc" {
+  url = "https://token.actions.githubusercontent.com/.well-known/openid-configuration"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+  thumbprint_list = [data.tls_certificate.github_oidc.certificates[0].sha1_fingerprint]
 
   tags = merge(var.tags, {
     Name  = "github-actions-oidc"

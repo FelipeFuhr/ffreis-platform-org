@@ -89,11 +89,11 @@ destroy: _require_fetched
 		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars
 
 ## nuke ENV=<env>: fetch, init then destroy -auto-approve (IRREVERSIBLE)
-## NOTE: S3 buckets in this stack have prevent_destroy=true — remove those lifecycle
-## blocks from terraform/stack/state.tf before running nuke, or the destroy will fail.
+## NOTE: State/storage buckets in this stack are configured with force_destroy=false.
+## Empty those buckets before running nuke, or terraform destroy may fail.
 nuke: _require_fetched
-	@echo "WARNING: The org stack contains S3 buckets with prevent_destroy=true."
-	@echo "         Remove lifecycle { prevent_destroy = true } blocks from terraform/stack/state.tf before proceeding."
+	@echo "WARNING: The org stack contains buckets configured with force_destroy=false."
+	@echo "         Empty those buckets before proceeding, or terraform destroy may fail."
 	@read -p "Type 'nuke-$(ENV)' to confirm destruction of org/$(ENV): " -r; \
 	if [ "$$REPLY" != "nuke-$(ENV)" ]; then \
 		echo "Cancelled."; \

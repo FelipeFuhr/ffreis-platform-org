@@ -59,7 +59,7 @@ type rawCreds struct {
 	Region          string
 }
 
-// toEnv returns the four AWS_* env vars suitable for injecting into a subprocess.
+// toEnv returns the five AWS_* env vars suitable for injecting into a subprocess.
 func (c rawCreds) toEnv() map[string]string {
 	return map[string]string{
 		"AWS_ACCESS_KEY_ID":     c.AccessKeyID,

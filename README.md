@@ -71,9 +71,9 @@ make apply ENV=prod
 Or use the CLI directly:
 
 ```sh
-./bin/platform-org plan --env prod --region us-east-1
-./bin/platform-org apply --env prod --region us-east-1
-./bin/platform-org audit --region us-east-1
+./bin/platform-org plan --env prod --region us-east-1 --profile bootstrap
+./bin/platform-org apply --env prod --region us-east-1 --profile bootstrap
+./bin/platform-org audit --region us-east-1 --profile bootstrap
 ```
 
 ## Safety notes

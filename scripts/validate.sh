@@ -100,7 +100,7 @@ if [[ ${#expected_accounts[@]} -eq 0 ]]; then
   expected_accounts=("development" "staging" "production")
 fi
 
-accounts_json="$(${AWS[@]} organizations list-accounts --no-paginate 2>/dev/null || true)"
+accounts_json="$(${AWS[@]} organizations list-accounts 2>/dev/null || true)"
 if [[ -z "${accounts_json}" ]]; then
   fail "Could not list accounts"
 else

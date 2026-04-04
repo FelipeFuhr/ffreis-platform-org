@@ -78,6 +78,8 @@ func setupFakeTerraform(t *testing.T, body string) string {
 func initRepoLayout(t *testing.T, root, env string) string {
 	t.Helper()
 	stack := filepath.Join(root, stackDirName)
+	// Create a .git marker so repoRoot() can identify the repo root.
+	writeFile(t, filepath.Join(root, ".git"), "gitdir: fake\n")
 	writeFile(t, filepath.Join(root, envsDirName, env, "backend.hcl"), "bucket = \"state\"\n")
 	writeFile(t, filepath.Join(root, envsDirName, env, "terraform.tfvars"), "org = \"ffreis\"\n")
 	if err := os.MkdirAll(stack, 0o755); err != nil {

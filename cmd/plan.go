@@ -28,7 +28,7 @@ var planCmd = &cobra.Command{
 
 		d.log.Info("running terraform plan", "env", d.env, "stack", stack)
 
-		args := []string{"plan", "-detailed-exitcode", varFileArg(stack, root, d.env)}
+		args := append([]string{"plan", "-detailed-exitcode"}, varFileArgs(stack, root, d.env)...)
 		code, err := runTerraform(ctx, runOptions{
 			stackPath: stack,
 			args:      args,

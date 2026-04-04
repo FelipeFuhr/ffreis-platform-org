@@ -30,7 +30,7 @@ var applyCmd = &cobra.Command{
 
 		d.log.Info("running terraform apply", "env", d.env, "auto_approve", applyAutoApprove)
 
-		args := []string{"apply", varFileArg(stack, root, d.env)}
+		args := append([]string{"apply"}, varFileArgs(stack, root, d.env)...)
 		if applyAutoApprove {
 			args = append(args, "-auto-approve")
 		}

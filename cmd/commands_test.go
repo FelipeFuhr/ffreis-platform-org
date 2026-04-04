@@ -29,7 +29,7 @@ func TestPlanCommandAllowsDetailedExitCodeTwo(t *testing.T) {
 	if err != nil {
 		t.Fatalf(errReadTraceFile, err)
 	}
-	want := "plan -detailed-exitcode -var-file=../envs/prod/terraform.tfvars\n"
+	want := "plan -detailed-exitcode -var-file=../envs/prod/terraform.tfvars -var-file=../envs/prod/fetched.auto.tfvars.json\n"
 	if string(got) != want {
 		t.Fatalf("plan args: want %q got %q", want, string(got))
 	}
@@ -60,7 +60,7 @@ func TestApplyCommandAddsAutoApprove(t *testing.T) {
 	if err != nil {
 		t.Fatalf(errReadTraceFile, err)
 	}
-	want := "apply -var-file=../envs/prod/terraform.tfvars -auto-approve\n"
+	want := "apply -var-file=../envs/prod/terraform.tfvars -var-file=../envs/prod/fetched.auto.tfvars.json -auto-approve\n"
 	if string(got) != want {
 		t.Fatalf("apply args: want %q got %q", want, string(got))
 	}
@@ -110,7 +110,7 @@ func TestNukeCommandRunsDestroyAfterConfirmation(t *testing.T) {
 	if err != nil {
 		t.Fatalf(errReadTraceFile, err)
 	}
-	want := "destroy -var-file=../envs/prod/terraform.tfvars -auto-approve\n"
+	want := "destroy -var-file=../envs/prod/terraform.tfvars -var-file=../envs/prod/fetched.auto.tfvars.json -auto-approve\n"
 	if string(got) != want {
 		t.Fatalf("destroy args: want %q got %q", want, string(got))
 	}

@@ -16,9 +16,8 @@ var nukeCmd = &cobra.Command{
 	Short: "Destroy all resources in the given environment (IRREVERSIBLE)",
 	Long: `nuke runs terraform destroy -auto-approve after an explicit confirmation prompt.
 
-NOTE: The state bucket and lock table in this stack have prevent_destroy = true.
-Remove those lifecycle blocks from terraform/stack/state.tf before running nuke, or the
-destroy will fail at plan time.`,
+NOTE: The state bucket and lock table in this stack have force_destroy = false.
+Empty those S3 buckets before running nuke, or the destroy will fail.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx := cmd.Context()
 
@@ -33,8 +32,8 @@ destroy will fail at plan time.`,
 
 		confirm := "destroy-" + d.env
 		_, _ = io.WriteString(os.Stderr, "\nWARNING: This will permanently destroy all resources in env "+strconv.Quote(d.env)+".\n")
-		_, _ = io.WriteString(os.Stderr, "The runtime S3 bucket and DynamoDB lock table have prevent_destroy = true.\n")
-		_, _ = io.WriteString(os.Stderr, "Remove those lifecycle blocks from terraform/stack/state.tf before proceeding.\n\n")
+		_, _ = io.WriteString(os.Stderr, "The runtime S3 bucket and DynamoDB lock table have force_destroy = false.\n")
+		_, _ = io.WriteString(os.Stderr, "Empty those S3 buckets before proceeding, or the destroy will fail.\n\n")
 		_, _ = io.WriteString(os.Stderr, "Type "+strconv.Quote(confirm)+" to confirm: ")
 
 		scanner := bufio.NewScanner(os.Stdin)
@@ -52,7 +51,8 @@ destroy will fail at plan time.`,
 
 		d.log.Info("running terraform destroy", "env", d.env)
 
-		args := []string{"destroy", varFileArg(stack, root, d.env), "-auto-approve"}
+		args := append([]string{"destroy"}, varFileArgs(stack, root, d.env)...)
+		args = append(args, "-auto-approve")
 		code, err := runTerraform(ctx, runOptions{
 			stackPath: stack,
 			args:      args,

@@ -76,17 +76,20 @@ init: _require_fetched
 ## plan ENV=<env>: show execution plan
 plan: _require_fetched
 	terraform -chdir=$(STACK) plan \
-		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars
+		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars \
+		-var-file=$(ENVS_REL)/$(ENV)/fetched.auto.tfvars.json
 
 ## apply ENV=<env>: apply changes
 apply: _require_fetched
 	terraform -chdir=$(STACK) apply \
-		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars
+		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars \
+		-var-file=$(ENVS_REL)/$(ENV)/fetched.auto.tfvars.json
 
 ## destroy ENV=<env>: destroy all resources (requires confirmation)
 destroy: _require_fetched
 	terraform -chdir=$(STACK) destroy \
-		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars
+		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars \
+		-var-file=$(ENVS_REL)/$(ENV)/fetched.auto.tfvars.json
 
 ## nuke ENV=<env>: fetch, init then destroy -auto-approve (IRREVERSIBLE)
 ## NOTE: State/storage buckets in this stack are configured with force_destroy=false.
@@ -105,6 +108,7 @@ nuke: _require_fetched
 		-reconfigure
 	terraform -chdir=$(STACK) destroy \
 		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars \
+		-var-file=$(ENVS_REL)/$(ENV)/fetched.auto.tfvars.json \
 		-auto-approve
 
 ## fmt: format all Go and Terraform files

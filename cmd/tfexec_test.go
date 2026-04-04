@@ -24,12 +24,17 @@ func TestBackendArgsIncludesLocalOverride(t *testing.T) {
 	}
 }
 
-func TestVarFileArgBuildsRelativePath(t *testing.T) {
+func TestVarFileArgsBuildsRelativePaths(t *testing.T) {
 	root := t.TempDir()
 	stack := initRepoLayout(t, root, testEnv)
 
-	if got := varFileArg(stack, root, testEnv); got != "-var-file=../envs/prod/terraform.tfvars" {
-		t.Fatalf("var file arg: got %q", got)
+	got := varFileArgs(stack, root, testEnv)
+	want := []string{
+		"-var-file=../envs/prod/terraform.tfvars",
+		"-var-file=../envs/prod/fetched.auto.tfvars.json",
+	}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("var file args: want %v got %v", want, got)
 	}
 }
 

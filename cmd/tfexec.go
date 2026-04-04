@@ -16,8 +16,9 @@ const (
 )
 
 // repoRoot returns the absolute path to the repository root by walking up
-// from the current working directory until it finds a .git marker. This keeps
-// the CLI working from any subdirectory without invoking git from PATH.
+// from the current working directory until it finds a .git marker. Returns
+// an error if no .git directory is found, so callers get a clear message
+// instead of operating on an arbitrary directory.
 func repoRoot() (string, error) {
 	dir, err := filepath.Abs(".")
 	if err != nil {
@@ -31,7 +32,7 @@ func repoRoot() (string, error) {
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return filepath.Abs(".")
+			return "", fmt.Errorf("not inside a git repository (no .git found walking up from %s)", dir)
 		}
 		dir = parent
 	}
@@ -70,14 +71,26 @@ func backendArgs(stackPath, root, env string) []string {
 	return args
 }
 
-// varFileArg returns the -var-file flag for terraform plan/apply/destroy.
-func varFileArg(stackPath, root, env string) string {
-	tfvars := filepath.Join(root, envsDirName, env, "terraform.tfvars")
-	rel, err := filepath.Rel(stackPath, tfvars)
-	if err != nil {
-		rel = filepath.Join("..", envsDirName, env, "terraform.tfvars")
+// varFileArgs returns the -var-file flags for terraform plan/apply/destroy.
+// Both the committed terraform.tfvars and the generated fetched.auto.tfvars.json
+// are included so that required variables (org, accounts, budget_alert_email)
+// sourced from the fetched file are always available when running from terraform/stack.
+func varFileArgs(stackPath, root, env string) []string {
+	envsDir := filepath.Join(root, envsDirName, env)
+
+	relPath := func(name string) string {
+		abs := filepath.Join(envsDir, name)
+		rel, err := filepath.Rel(stackPath, abs)
+		if err != nil {
+			rel = filepath.Join("..", envsDirName, env, name)
+		}
+		return "-var-file=" + rel
 	}
-	return "-var-file=" + rel
+
+	return []string{
+		relPath("terraform.tfvars"),
+		relPath("fetched.auto.tfvars.json"),
+	}
 }
 
 // isInitialised reports whether terraform has already been initialised in

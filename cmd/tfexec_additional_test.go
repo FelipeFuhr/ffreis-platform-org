@@ -26,8 +26,8 @@ func TestRepoRootAndStackDirUseWorkingDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stackDir: %v", err)
 	}
-	if gotStack != root+"/"+stackDirName {
-		t.Fatalf("stackDir: want %q got %q", root+"/"+stackDirName, gotStack)
+	if gotStack != filepath.Join(root, stackDirName) {
+		t.Fatalf("stackDir: want %q got %q", filepath.Join(root, stackDirName), gotStack)
 	}
 }
 

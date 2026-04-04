@@ -54,6 +54,7 @@ bin/
 
 # Code coverage profiles and other test artifacts
 *.out
+*.cover
 coverage.*
 *.coverprofile
 profile.cov

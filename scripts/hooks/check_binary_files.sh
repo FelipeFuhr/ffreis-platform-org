@@ -19,11 +19,23 @@ while IFS=$'\t' read -r added deleted file; do
     continue
   fi
 
-  if is_allowlisted "$file"; then
+  # Resolve rename/copy path notation to the destination path.
+  # git --numstat can emit "{prefix/old => new}/suffix" or "old => new" for copies.
+  actual_file="$file"
+  if [[ "$file" == *" => "* ]]; then
+    if [[ "$file" =~ \{([^}]*)[[:space:]]=\>[[:space:]]([^}]*)\}(.*) ]]; then
+      prefix="${file%%\{*}"
+      actual_file="${prefix}${BASH_REMATCH[2]}${BASH_REMATCH[3]}"
+    else
+      actual_file="${file##* => }"
+    fi
+  fi
+
+  if is_allowlisted "$actual_file"; then
     continue
   fi
 
-  common_err "Unexpected staged binary file: ${file}"
+  common_err "Unexpected staged binary file: ${actual_file}"
   has_error=1
 done < <(git diff --cached --numstat --diff-filter=ACM)
 

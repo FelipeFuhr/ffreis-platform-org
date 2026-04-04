@@ -9,7 +9,7 @@ if [[ -z "${commit_msg_file}" || ! -f "${commit_msg_file}" ]]; then
   exit 1
 fi
 
-subject="$(grep -m1 -vE '^\s*(#|$)' "${commit_msg_file}" || true)"
+subject="$(grep -m1 -vE '^[[:space:]]*(#|$)' "${commit_msg_file}" || true)"
 if [[ -z "${subject}" ]]; then
   echo "Commit message subject cannot be empty." >&2
   exit 1

@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------------------
 
 module "tf_state_runtime" {
-  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/s3-bucket?ref=main"
+  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/s3-bucket?ref=e8bc4e4fdbc22306c8045c5f74deb67745a6e29b"
 
   bucket                = "${var.org}-tf-state-runtime"
   versioning_enabled    = true
@@ -38,7 +38,7 @@ module "tf_state_runtime" {
 }
 
 module "tf_locks_runtime" {
-  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/dynamodb-table?ref=main"
+  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/dynamodb-table?ref=e8bc4e4fdbc22306c8045c5f74deb67745a6e29b"
 
   name     = "${var.org}-tf-locks-runtime"
   hash_key = "LockID"

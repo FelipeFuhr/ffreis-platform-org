@@ -87,6 +87,38 @@ func TestNukeCommandCancelsOnUnexpectedConfirmation(t *testing.T) {
 	}
 }
 
+func TestNukeCommandAllowsForceFalse(t *testing.T) {
+	d.log = newLogger("error")
+	d.env = testEnv
+	d.creds = rawCreds{Region: testRegion}
+	root := t.TempDir()
+	stack := initRepoLayout(t, root, testEnv)
+	if err := os.MkdirAll(filepath.Join(stack, terraformDirName), 0o755); err != nil {
+		t.Fatalf(errMkdirTerraform, err)
+	}
+	traceFile := filepath.Join(t.TempDir(), traceFileName)
+	t.Setenv("TRACE_FILE", traceFile)
+	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
+	withWorkingDir(t, root)
+	setStdinText(t, "destroy-prod\n")
+	nukeCmd.SetContext(context.Background())
+	old := nukeForce
+	nukeForce = false
+	t.Cleanup(func() { nukeForce = old })
+
+	if err := nukeCmd.RunE(nukeCmd, nil); err != nil {
+		t.Fatalf("nukeCmd.RunE force=false: %v", err)
+	}
+	got, err := os.ReadFile(traceFile)
+	if err != nil {
+		t.Fatalf(errReadTraceFile, err)
+	}
+	want := "destroy -var-file=../envs/prod/terraform.tfvars -var-file=../envs/prod/fetched.auto.tfvars.json\n"
+	if string(got) != want {
+		t.Fatalf("destroy args with force=false: want %q got %q", want, string(got))
+	}
+}
+
 func TestNukeCommandRunsDestroyAfterConfirmation(t *testing.T) {
 	d.log = newLogger("error")
 	d.env = testEnv

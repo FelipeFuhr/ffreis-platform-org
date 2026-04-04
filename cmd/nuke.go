@@ -11,10 +11,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var nukeForce = true
+
 var nukeCmd = &cobra.Command{
 	Use:   "nuke",
 	Short: "Destroy all resources in the given environment (IRREVERSIBLE)",
-	Long: `nuke runs terraform destroy -auto-approve after an explicit confirmation prompt.
+	Long: `nuke runs terraform destroy after an explicit confirmation prompt.
 
 NOTE: The state bucket and lock table in this stack have force_destroy = false.
 Empty those S3 buckets before running nuke, or the destroy will fail.`,
@@ -49,10 +51,12 @@ Empty those S3 buckets before running nuke, or the destroy will fail.`,
 			return fmt.Errorf("terraform init: %w", err)
 		}
 
-		d.log.Info("running terraform destroy", "env", d.env)
+		d.log.Info("running terraform destroy", "env", d.env, "force", nukeForce)
 
 		args := append([]string{"destroy"}, varFileArgs(stack, root, d.env)...)
-		args = append(args, "-auto-approve")
+		if nukeForce {
+			args = append(args, "-auto-approve")
+		}
 		code, err := runTerraform(ctx, runOptions{
 			stackPath: stack,
 			args:      args,
@@ -72,5 +76,6 @@ Empty those S3 buckets before running nuke, or the destroy will fail.`,
 }
 
 func init() {
+	nukeCmd.Flags().BoolVar(&nukeForce, "force", true, "Skip Terraform's final approval prompt")
 	rootCmd.AddCommand(nukeCmd)
 }

@@ -239,18 +239,27 @@ func printBudgetSection(ctx context.Context) {
 		}
 	}
 
-	// Check cost allocation tags.
-	ceOut, err := d.ce.ListCostAllocationTags(ctx, &costexplorer.ListCostAllocationTagsInput{
-		Status: cetypes.CostAllocationTagStatusActive,
-	})
-	if err != nil {
-		fmt.Printf("  WARN  cost-tags     could not list: %v\n", err)
-		return
-	}
-
+	// Check cost allocation tags (paginated).
 	active := make(map[string]bool)
-	for _, t := range ceOut.CostAllocationTags {
-		active[sdkaws.ToString(t.TagKey)] = true
+	var nextToken *string
+	for {
+		ceOut, err := d.ce.ListCostAllocationTags(ctx, &costexplorer.ListCostAllocationTagsInput{
+			Status:    cetypes.CostAllocationTagStatusActive,
+			NextToken: nextToken,
+		})
+		if err != nil {
+			fmt.Printf("  WARN  cost-tags     could not list: %v\n", err)
+			return
+		}
+
+		for _, t := range ceOut.CostAllocationTags {
+			active[sdkaws.ToString(t.TagKey)] = true
+		}
+
+		if sdkaws.ToString(ceOut.NextToken) == "" {
+			break
+		}
+		nextToken = ceOut.NextToken
 	}
 
 	requiredCostTags := []string{"Stack", "Project", "Layer", "Owner", "Environment"}

@@ -91,7 +91,14 @@ echo ""
 # ---------------------------------------------------------------------------
 echo "--- 2. Member accounts ---"
 
-expected_accounts=("development" "staging" "production")
+expected_accounts=()
+fetched_file="${ENVS_DIR}/${ENV}/fetched.auto.tfvars.json"
+if [[ -f "${fetched_file}" ]]; then
+  mapfile -t expected_accounts < <(jq -r '.accounts | keys[]' "${fetched_file}" 2>/dev/null || true)
+fi
+if [[ ${#expected_accounts[@]} -eq 0 ]]; then
+  expected_accounts=("development" "staging" "production")
+fi
 
 accounts_json="$(${AWS} organizations list-accounts 2>/dev/null || true)"
 if [[ -z "${accounts_json}" ]]; then
@@ -161,7 +168,12 @@ echo "--- 4. Runtime backend ---"
 org="$(jq -r '.org // empty' "${ENVS_DIR}/${ENV}/fetched.auto.tfvars.json" 2>/dev/null || true)"
 if [[ -z "${org}" ]]; then
   org="$(grep '^org' "${ENVS_DIR}/${ENV}/terraform.tfvars" | \
-    sed 's/.*=\s*"\(.*\)"/\1/')"
+    sed 's/.*=\s*"\(.*\)"/\1/' || true)"
+fi
+if [[ -z "${org}" ]]; then
+  fail "Could not determine 'org': neither fetched.auto.tfvars.json nor terraform.tfvars provided it"
+  echo "       Run 'make fetch ENV=${ENV}' to populate fetched.auto.tfvars.json" >&2
+  exit 1
 fi
 runtime_bucket="${org}-tf-state-runtime"
 runtime_table="${org}-tf-locks-runtime"
@@ -205,8 +217,16 @@ echo ""
 echo "--- 5. Terraform state ---"
 
 state_key="platform-org/${ENV}/terraform.tfstate"
-root_bucket="$(grep '^bucket' "${STACK_DIR}/backend.local.hcl" | \
-  sed 's/.*"\(.*\)"/\1/')"
+backend_hcl="${STACK_DIR}/backend.local.hcl"
+if [[ ! -f "${backend_hcl}" ]]; then
+  fail "backend.local.hcl not found at ${backend_hcl} — run 'make fetch ENV=${ENV}' first"
+  exit 1
+fi
+root_bucket="$(awk -F'=' '/^bucket/ { gsub(/[[:space:]"]+/, "", $2); print $2 }' "${backend_hcl}")"
+if [[ -z "${root_bucket}" ]]; then
+  fail "Could not parse 'bucket' from ${backend_hcl}"
+  exit 1
+fi
 
 if ${AWS} s3api head-object \
     --bucket "${root_bucket}" \

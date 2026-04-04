@@ -65,6 +65,11 @@ resource "aws_ce_cost_allocation_tag" "stack" {
   status  = "Active"
 }
 
+resource "aws_ce_cost_allocation_tag" "environment" {
+  tag_key = "Environment"
+  status  = "Active"
+}
+
 # ---------------------------------------------------------------------------
 # Resource Group: bootstrap layer
 #

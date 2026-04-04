@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "weekly"
   - package-ecosystem: "terraform"
-    directory: "/stack"
+    directory: "/terraform/stack"
     schedule:
       interval: "weekly"
 

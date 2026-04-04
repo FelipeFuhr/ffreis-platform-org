@@ -3,6 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	sdkaws "github.com/aws/aws-sdk-go-v2/aws"
@@ -14,18 +16,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// knownStackValues are all Stack tag values claimed by the platform.
-// Resources with a Stack tag NOT in this list are unowned.
-// Bootstrap resources don't carry Stack — they're identified by Layer=bootstrap.
-var knownStackValues = []string{
-	"platform-org",
-	"platform-shared-infra",
-	"flemming",
-	"ffreis-website",
-}
-
 // requiredTags are the tags every Terraform-managed resource must carry.
+// Ownership is determined by ManagedBy=terraform (or Layer=bootstrap) — no
+// hardcoded list of stack names is needed, so new stacks are recognised
+// automatically once their resources carry the correct tags.
 var requiredTags = []string{"Project", "Environment", "ManagedBy", "Stack"}
+
+var (
+	auditStdout          io.Writer = os.Stdout
+	scanResourcesFn                = scanResources
+	printResourceTableFn           = printResourceTable
+	printBudgetSectionFn           = printBudgetSection
+	getResourcesPage               = func(ctx context.Context, input *resourcegroupstaggingapi.GetResourcesInput) (*resourcegroupstaggingapi.GetResourcesOutput, error) {
+		return d.tagging.GetResources(ctx, input)
+	}
+	describeBudgetsFn = func(ctx context.Context, input *budgets.DescribeBudgetsInput) (*budgets.DescribeBudgetsOutput, error) {
+		return d.budgets.DescribeBudgets(ctx, input)
+	}
+	listCostAllocationTagsFn = func(ctx context.Context, input *costexplorer.ListCostAllocationTagsInput) (*costexplorer.ListCostAllocationTagsOutput, error) {
+		return d.ce.ListCostAllocationTags(ctx, input)
+	}
+)
 
 // auditResource is one finding from the resource scan.
 type auditResource struct {
@@ -42,23 +53,24 @@ var auditCmd = &cobra.Command{
 	Long: `audit uses the AWS Resource Groups Tagging API to scan all tagged resources
 in the account and report on:
 
-  1. Ownership — resources with no known Stack tag are flagged as unowned.
-  2. Tag completeness — resources owned by this stack must carry all required tags.
+  1. Ownership — resources without ManagedBy=terraform or Layer=bootstrap are unowned.
+     No hardcoded stack list: any new stack is recognised automatically.
+  2. Tag completeness — terraform-managed resources must carry all required tags.
   3. Budget coverage — verifies a budget exists and cost allocation tags are active.
 
 Since platform-org is the management layer, this audit covers ALL stacks.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx := cmd.Context()
 
-		fmt.Printf("\nAudit report — account: %s  region: %s\n\n", d.accountID, d.region)
+		fmt.Fprintf(auditStdout, "\nAudit report — account: %s  region: %s\n\n", d.accountID, d.region)
 
-		resources, err := scanResources(ctx)
+		resources, err := scanResourcesFn(ctx)
 		if err != nil {
 			return fmt.Errorf("scanning resources: %w", err)
 		}
 
-		printResourceTable(resources)
-		printBudgetSection(ctx)
+		printResourceTableFn(resources)
+		printBudgetSectionFn(ctx)
 
 		var owned, unowned, warn int
 		for _, r := range resources {
@@ -71,8 +83,7 @@ Since platform-org is the management layer, this audit covers ALL stacks.`,
 				warn++
 			}
 		}
-		fmt.Printf("\nSummary: %d owned, %d unowned, %d with tag issues\n\n",
-			owned, unowned, warn)
+		fmt.Fprintf(auditStdout, "\nSummary: %d owned, %d unowned, %d with tag issues\n\n", owned, unowned, warn)
 
 		return nil
 	},
@@ -85,7 +96,7 @@ func scanResources(ctx context.Context) ([]auditResource, error) {
 
 	var nextToken *string
 	for {
-		out, err := d.tagging.GetResources(ctx, &resourcegroupstaggingapi.GetResourcesInput{
+		out, err := getResourcesPage(ctx, &resourcegroupstaggingapi.GetResourcesInput{
 			ResourcesPerPage: sdkaws.Int32(100),
 			PaginationToken:  nextToken,
 		})
@@ -126,20 +137,19 @@ func classifyResource(m taggingtypes.ResourceTagMapping) auditResource {
 		}
 	}
 
-	stackVal := tags["Stack"]
-
-	// Check if Stack tag is a known platform value.
-	if !isKnownStack(stackVal) {
+	// Ownership gate: ManagedBy=terraform means some Terraform stack owns this.
+	// Any resource lacking this tag is unowned — no list of stack names needed.
+	if tags["ManagedBy"] != "terraform" {
 		return auditResource{
 			status:       "UNOWNED",
 			resourceType: rtype,
 			name:         name,
-			stack:        stackVal,
-			issues:       []string{"Stack tag absent or unrecognised"},
+			stack:        tags["Stack"],
+			issues:       []string{"ManagedBy tag absent or not 'terraform'"},
 		}
 	}
 
-	// Owned resource — check required tags.
+	// Terraform-managed resource — check required tags.
 	var issues []string
 	for _, req := range requiredTags {
 		if tags[req] == "" {
@@ -156,18 +166,9 @@ func classifyResource(m taggingtypes.ResourceTagMapping) auditResource {
 		status:       status,
 		resourceType: rtype,
 		name:         name,
-		stack:        stackVal,
+		stack:        tags["Stack"],
 		issues:       issues,
 	}
-}
-
-func isKnownStack(v string) bool {
-	for _, s := range knownStackValues {
-		if v == s {
-			return true
-		}
-	}
-	return false
 }
 
 // parseARN extracts a human-readable resource type and name from an ARN.
@@ -196,8 +197,8 @@ func parseARN(arn string) (resourceType, name string) {
 // printResourceTable writes the audit findings table to stdout.
 func printResourceTable(resources []auditResource) {
 	const colFmt = "%-8s  %-30s  %-40s  %-22s  %s\n"
-	fmt.Printf(colFmt, "STATUS", "TYPE", "NAME", "STACK", "ISSUES")
-	fmt.Printf(colFmt,
+	fmt.Fprintf(auditStdout, colFmt, "STATUS", "TYPE", "NAME", "STACK", "ISSUES")
+	fmt.Fprintf(auditStdout, colFmt,
 		strings.Repeat("-", 8),
 		strings.Repeat("-", 30),
 		strings.Repeat("-", 40),
@@ -213,20 +214,20 @@ func printResourceTable(resources []auditResource) {
 		if stack == "" {
 			stack = "(no tag)"
 		}
-		fmt.Printf(colFmt, r.status, truncate(r.resourceType, 30), truncate(r.name, 40), truncate(stack, 22), issues)
+		fmt.Fprintf(auditStdout, colFmt, r.status, truncate(r.resourceType, 30), truncate(r.name, 40), truncate(stack, 22), issues)
 	}
 }
 
 // printBudgetSection checks and prints budget coverage and cost allocation tag status.
 func printBudgetSection(ctx context.Context) {
-	fmt.Println()
-	fmt.Println("Budget & cost coverage:")
+	fmt.Fprintln(auditStdout)
+	fmt.Fprintln(auditStdout, "Budget & cost coverage:")
 
 	printBudgets(ctx)
 
 	active, err := loadActiveCostTags(ctx)
 	if err != nil {
-		fmt.Printf("  WARN  cost-tags     could not list: %v\n", err)
+		fmt.Fprintf(auditStdout, "  WARN  cost-tags     could not list: %v\n", err)
 		return
 	}
 
@@ -234,19 +235,19 @@ func printBudgetSection(ctx context.Context) {
 }
 
 func printBudgets(ctx context.Context) {
-	budgetsOut, err := d.budgets.DescribeBudgets(ctx, &budgets.DescribeBudgetsInput{
+	budgetsOut, err := describeBudgetsFn(ctx, &budgets.DescribeBudgetsInput{
 		AccountId: sdkaws.String(d.accountID),
 	})
 	if err != nil {
-		fmt.Printf("  WARN  budgets       could not list: %v\n", err)
+		fmt.Fprintf(auditStdout, "  WARN  budgets       could not list: %v\n", err)
 		return
 	}
 	if len(budgetsOut.Budgets) == 0 {
-		fmt.Println("  WARN  budgets       none found — create a budget to track spend")
+		fmt.Fprintln(auditStdout, "  WARN  budgets       none found — create a budget to track spend")
 		return
 	}
 	for _, b := range budgetsOut.Budgets {
-		fmt.Printf("  OK    budget        %-40s  $%s/month\n",
+		fmt.Fprintf(auditStdout, "  OK    budget        %-40s  $%s/month\n",
 			sdkaws.ToString(b.BudgetName),
 			sdkaws.ToString(b.BudgetLimit.Amount),
 		)
@@ -257,7 +258,7 @@ func loadActiveCostTags(ctx context.Context) (map[string]bool, error) {
 	active := make(map[string]bool)
 	var nextToken *string
 	for {
-		ceOut, err := d.ce.ListCostAllocationTags(ctx, &costexplorer.ListCostAllocationTagsInput{
+		ceOut, err := listCostAllocationTagsFn(ctx, &costexplorer.ListCostAllocationTagsInput{
 			Status:    cetypes.CostAllocationTagStatusActive,
 			NextToken: nextToken,
 		})
@@ -280,10 +281,10 @@ func printCostTagStatuses(active map[string]bool) {
 	requiredCostTags := []string{"Stack", "Project", "Layer", "Owner", "Environment"}
 	for _, tag := range requiredCostTags {
 		if active[tag] {
-			fmt.Printf("  OK    cost-tag      %-40s  active\n", tag)
+			fmt.Fprintf(auditStdout, "  OK    cost-tag      %-40s  active\n", tag)
 			continue
 		}
-		fmt.Printf("  WARN  cost-tag      %-40s  not activated — run platform-org apply\n", tag)
+		fmt.Fprintf(auditStdout, "  WARN  cost-tag      %-40s  not activated — run platform-org apply\n", tag)
 	}
 }
 

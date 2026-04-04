@@ -34,7 +34,7 @@ PASS="[ PASS ]"
 FAIL="[ FAIL ]"
 errors=0
 
-fail() { echo "${FAIL} $*" >&2; errors=$((errors + 1)); }
+fail() { echo "${FAIL} $*" >&2; errors=$((errors + 1)); return 0; }
 pass() { echo "${PASS} $*"; return 0; }
 
 require_tool() {
@@ -183,7 +183,7 @@ if ${AWS} s3api head-bucket --bucket "${runtime_bucket}" 2>/dev/null; then
 
   versioning="$(${AWS} s3api get-bucket-versioning --bucket "${runtime_bucket}" | \
     jq -r '.Status // "Disabled"')"
-  if [ "${versioning}" = "Enabled" ]; then
+  if [[ "${versioning}" == "Enabled" ]]; then
     pass "Versioning enabled on ${runtime_bucket}"
   else
     fail "Versioning not enabled on ${runtime_bucket} (status=${versioning})"

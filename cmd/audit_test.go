@@ -107,6 +107,7 @@ func TestClassifyResource_OwnedMissingTag(t *testing.T) {
 	m := testResourceTagMapping(
 		"arn:aws:s3:::ffreis-tf-state-runtime",
 		testTag("Stack", "flemming"),
+		testTag("ManagedBy", "terraform"),
 	)
 	r := classifyResource(m)
 	assertAuditStatus(t, r, "WARN")
@@ -124,28 +125,30 @@ func TestClassifyResource_Unowned(t *testing.T) {
 	assertAuditStatus(t, r, "UNOWNED")
 }
 
-func TestClassifyResource_UnknownStack(t *testing.T) {
+func TestClassifyResource_TerraformOwnedUnknownStack(t *testing.T) {
+	// A resource with ManagedBy=terraform but an unrecognised Stack value is
+	// still terraform-owned — it shows as WARN (missing Project/Environment),
+	// not UNOWNED. This is intentional: new stacks are automatically recognised
+	// without updating any hardcoded list.
+	m := testResourceTagMapping(
+		"arn:aws:lambda:us-east-1:123:function:new-stack-lambda",
+		testTag("Stack", "new-future-stack"),
+		testTag("ManagedBy", "terraform"),
+		testTag("Project", "platform"),
+		testTag("Environment", "prod"),
+	)
+	r := classifyResource(m)
+	assertAuditStatus(t, r, "OK")
+}
+
+func TestClassifyResource_NoManagedBy(t *testing.T) {
+	// A resource with a Stack tag but no ManagedBy=terraform is unowned.
 	m := testResourceTagMapping(
 		"arn:aws:lambda:us-east-1:123:function:rogue-lambda",
-		testTag("Stack", "unknown-project"),
-		testTag("ManagedBy", "terraform"),
+		testTag("Stack", "platform-org"),
 	)
 	r := classifyResource(m)
 	assertAuditStatus(t, r, "UNOWNED")
-}
-
-func TestIsKnownStack(t *testing.T) {
-	for _, known := range knownStackValues {
-		if !isKnownStack(known) {
-			t.Errorf("expected %q to be known", known)
-		}
-	}
-	if isKnownStack("rogue-stack") {
-		t.Error("expected rogue-stack to be unknown")
-	}
-	if isKnownStack("") {
-		t.Error("expected empty string to be unknown")
-	}
 }
 
 func TestTruncate(t *testing.T) {

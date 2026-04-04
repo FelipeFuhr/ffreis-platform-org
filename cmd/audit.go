@@ -222,24 +222,38 @@ func printBudgetSection(ctx context.Context) {
 	fmt.Println()
 	fmt.Println("Budget & cost coverage:")
 
-	// Check budgets.
+	printBudgets(ctx)
+
+	active, err := loadActiveCostTags(ctx)
+	if err != nil {
+		fmt.Printf("  WARN  cost-tags     could not list: %v\n", err)
+		return
+	}
+
+	printCostTagStatuses(active)
+}
+
+func printBudgets(ctx context.Context) {
 	budgetsOut, err := d.budgets.DescribeBudgets(ctx, &budgets.DescribeBudgetsInput{
 		AccountId: sdkaws.String(d.accountID),
 	})
 	if err != nil {
 		fmt.Printf("  WARN  budgets       could not list: %v\n", err)
-	} else if len(budgetsOut.Budgets) == 0 {
-		fmt.Println("  WARN  budgets       none found — create a budget to track spend")
-	} else {
-		for _, b := range budgetsOut.Budgets {
-			fmt.Printf("  OK    budget        %-40s  $%s/month\n",
-				sdkaws.ToString(b.BudgetName),
-				sdkaws.ToString(b.BudgetLimit.Amount),
-			)
-		}
+		return
 	}
+	if len(budgetsOut.Budgets) == 0 {
+		fmt.Println("  WARN  budgets       none found — create a budget to track spend")
+		return
+	}
+	for _, b := range budgetsOut.Budgets {
+		fmt.Printf("  OK    budget        %-40s  $%s/month\n",
+			sdkaws.ToString(b.BudgetName),
+			sdkaws.ToString(b.BudgetLimit.Amount),
+		)
+	}
+}
 
-	// Check cost allocation tags (paginated).
+func loadActiveCostTags(ctx context.Context) (map[string]bool, error) {
 	active := make(map[string]bool)
 	var nextToken *string
 	for {
@@ -248,8 +262,7 @@ func printBudgetSection(ctx context.Context) {
 			NextToken: nextToken,
 		})
 		if err != nil {
-			fmt.Printf("  WARN  cost-tags     could not list: %v\n", err)
-			return
+			return nil, err
 		}
 
 		for _, t := range ceOut.CostAllocationTags {
@@ -257,18 +270,20 @@ func printBudgetSection(ctx context.Context) {
 		}
 
 		if sdkaws.ToString(ceOut.NextToken) == "" {
-			break
+			return active, nil
 		}
 		nextToken = ceOut.NextToken
 	}
+}
 
+func printCostTagStatuses(active map[string]bool) {
 	requiredCostTags := []string{"Stack", "Project", "Layer", "Owner", "Environment"}
 	for _, tag := range requiredCostTags {
 		if active[tag] {
 			fmt.Printf("  OK    cost-tag      %-40s  active\n", tag)
-		} else {
-			fmt.Printf("  WARN  cost-tag      %-40s  not activated — run platform-org apply\n", tag)
+			continue
 		}
+		fmt.Printf("  WARN  cost-tag      %-40s  not activated — run platform-org apply\n", tag)
 	}
 }
 

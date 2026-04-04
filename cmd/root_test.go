@@ -15,7 +15,7 @@ func TestRawCredsToEnv(t *testing.T) {
 		AccessKeyID:     "AKIA123",
 		SecretAccessKey: "secret",
 		SessionToken:    "token",
-		Region:          "us-east-1",
+		Region:          testRegion,
 	}
 
 	env := creds.toEnv()
@@ -54,7 +54,7 @@ func TestLoadAWSConfigRequiresCredentials(t *testing.T) {
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "")
 	t.Setenv("AWS_SESSION_TOKEN", "")
 
-	_, err := loadAWSConfig(context.Background(), "", "us-east-1")
+	_, err := loadAWSConfig(context.Background(), "", testRegion)
 	if err == nil {
 		t.Fatal("expected missing credentials error, got nil")
 	}
@@ -88,7 +88,7 @@ func TestLoadAWSConfigFromEnv(t *testing.T) {
 func TestAssumeAdminRoleAlreadyAssumedSkipsSTS(t *testing.T) {
 	d.log = newLogger("error")
 	cfg := sdkaws.Config{
-		Region:      "us-east-1",
+		Region:      testRegion,
 		Credentials: credentials.NewStaticCredentialsProvider("AKIA", "secret", "token"),
 	}
 
@@ -97,7 +97,7 @@ func TestAssumeAdminRoleAlreadyAssumedSkipsSTS(t *testing.T) {
 		cfg,
 		"arn:aws:sts::123456789012:assumed-role/platform-admin/session",
 		"123456789012",
-		"us-east-1",
+		testRegion,
 	)
 	if err != nil {
 		t.Fatalf("assumeAdminRole: %v", err)
@@ -113,7 +113,7 @@ func TestAssumeAdminRoleAlreadyAssumedSkipsSTS(t *testing.T) {
 func TestAssumeAdminRoleRootSkipsSTS(t *testing.T) {
 	d.log = newLogger("error")
 	cfg := sdkaws.Config{
-		Region:      "us-east-1",
+		Region:      testRegion,
 		Credentials: credentials.NewStaticCredentialsProvider("ROOTKEY", "secret", "token"),
 	}
 
@@ -122,7 +122,7 @@ func TestAssumeAdminRoleRootSkipsSTS(t *testing.T) {
 		cfg,
 		"arn:aws:iam::123456789012:root",
 		"123456789012",
-		"us-east-1",
+		testRegion,
 	)
 	if err != nil {
 		t.Fatalf("assumeAdminRole: %v", err)

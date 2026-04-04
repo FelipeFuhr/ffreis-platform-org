@@ -9,14 +9,14 @@ import (
 
 func TestPlanCommandAllowsDetailedExitCodeTwo(t *testing.T) {
 	d.log = newLogger("error")
-	d.env = "prod"
-	d.creds = rawCreds{Region: "us-east-1"}
+	d.env = testEnv
+	d.creds = rawCreds{Region: testRegion}
 	root := t.TempDir()
-	stack := initRepoLayout(t, root, "prod")
-	if err := os.MkdirAll(filepath.Join(stack, ".terraform"), 0o755); err != nil {
-		t.Fatalf("mkdir .terraform: %v", err)
+	stack := initRepoLayout(t, root, testEnv)
+	if err := os.MkdirAll(filepath.Join(stack, terraformDirName), 0o755); err != nil {
+		t.Fatalf(errMkdirTerraform, err)
 	}
-	traceFile := filepath.Join(t.TempDir(), "trace.txt")
+	traceFile := filepath.Join(t.TempDir(), traceFileName)
 	t.Setenv("TRACE_FILE", traceFile)
 	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"; exit 2`)
 	withWorkingDir(t, root)
@@ -27,7 +27,7 @@ func TestPlanCommandAllowsDetailedExitCodeTwo(t *testing.T) {
 	}
 	got, err := os.ReadFile(traceFile)
 	if err != nil {
-		t.Fatalf("read trace file: %v", err)
+		t.Fatalf(errReadTraceFile, err)
 	}
 	want := "plan -detailed-exitcode -var-file=../envs/prod/terraform.tfvars\n"
 	if string(got) != want {
@@ -37,14 +37,14 @@ func TestPlanCommandAllowsDetailedExitCodeTwo(t *testing.T) {
 
 func TestApplyCommandAddsAutoApprove(t *testing.T) {
 	d.log = newLogger("error")
-	d.env = "prod"
-	d.creds = rawCreds{Region: "us-east-1"}
+	d.env = testEnv
+	d.creds = rawCreds{Region: testRegion}
 	root := t.TempDir()
-	stack := initRepoLayout(t, root, "prod")
-	if err := os.MkdirAll(filepath.Join(stack, ".terraform"), 0o755); err != nil {
-		t.Fatalf("mkdir .terraform: %v", err)
+	stack := initRepoLayout(t, root, testEnv)
+	if err := os.MkdirAll(filepath.Join(stack, terraformDirName), 0o755); err != nil {
+		t.Fatalf(errMkdirTerraform, err)
 	}
-	traceFile := filepath.Join(t.TempDir(), "trace.txt")
+	traceFile := filepath.Join(t.TempDir(), traceFileName)
 	t.Setenv("TRACE_FILE", traceFile)
 	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 	withWorkingDir(t, root)
@@ -58,7 +58,7 @@ func TestApplyCommandAddsAutoApprove(t *testing.T) {
 	}
 	got, err := os.ReadFile(traceFile)
 	if err != nil {
-		t.Fatalf("read trace file: %v", err)
+		t.Fatalf(errReadTraceFile, err)
 	}
 	want := "apply -var-file=../envs/prod/terraform.tfvars -auto-approve\n"
 	if string(got) != want {
@@ -68,11 +68,11 @@ func TestApplyCommandAddsAutoApprove(t *testing.T) {
 
 func TestNukeCommandCancelsOnUnexpectedConfirmation(t *testing.T) {
 	d.log = newLogger("error")
-	d.env = "prod"
-	d.creds = rawCreds{Region: "us-east-1"}
+	d.env = testEnv
+	d.creds = rawCreds{Region: testRegion}
 	root := t.TempDir()
-	initRepoLayout(t, root, "prod")
-	traceFile := filepath.Join(t.TempDir(), "trace.txt")
+	initRepoLayout(t, root, testEnv)
+	traceFile := filepath.Join(t.TempDir(), traceFileName)
 	t.Setenv("TRACE_FILE", traceFile)
 	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 	withWorkingDir(t, root)
@@ -89,14 +89,14 @@ func TestNukeCommandCancelsOnUnexpectedConfirmation(t *testing.T) {
 
 func TestNukeCommandRunsDestroyAfterConfirmation(t *testing.T) {
 	d.log = newLogger("error")
-	d.env = "prod"
-	d.creds = rawCreds{Region: "us-east-1"}
+	d.env = testEnv
+	d.creds = rawCreds{Region: testRegion}
 	root := t.TempDir()
-	stack := initRepoLayout(t, root, "prod")
-	if err := os.MkdirAll(filepath.Join(stack, ".terraform"), 0o755); err != nil {
-		t.Fatalf("mkdir .terraform: %v", err)
+	stack := initRepoLayout(t, root, testEnv)
+	if err := os.MkdirAll(filepath.Join(stack, terraformDirName), 0o755); err != nil {
+		t.Fatalf(errMkdirTerraform, err)
 	}
-	traceFile := filepath.Join(t.TempDir(), "trace.txt")
+	traceFile := filepath.Join(t.TempDir(), traceFileName)
 	t.Setenv("TRACE_FILE", traceFile)
 	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 	withWorkingDir(t, root)
@@ -108,7 +108,7 @@ func TestNukeCommandRunsDestroyAfterConfirmation(t *testing.T) {
 	}
 	got, err := os.ReadFile(traceFile)
 	if err != nil {
-		t.Fatalf("read trace file: %v", err)
+		t.Fatalf(errReadTraceFile, err)
 	}
 	want := "destroy -var-file=../envs/prod/terraform.tfvars -auto-approve\n"
 	if string(got) != want {

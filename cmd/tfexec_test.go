@@ -11,10 +11,10 @@ import (
 
 func TestBackendArgsIncludesLocalOverride(t *testing.T) {
 	root := t.TempDir()
-	stack := initRepoLayout(t, root, "prod")
+	stack := initRepoLayout(t, root, testEnv)
 	writeFile(t, filepath.Join(stack, "backend.local.hcl"), "bucket = \"local\"\n")
 
-	args := backendArgs(stack, root, "prod")
+	args := backendArgs(stack, root, testEnv)
 	want := []string{
 		"-backend-config=backend.local.hcl",
 		"-backend-config=../envs/prod/backend.hcl",
@@ -26,9 +26,9 @@ func TestBackendArgsIncludesLocalOverride(t *testing.T) {
 
 func TestVarFileArgBuildsRelativePath(t *testing.T) {
 	root := t.TempDir()
-	stack := initRepoLayout(t, root, "prod")
+	stack := initRepoLayout(t, root, testEnv)
 
-	if got := varFileArg(stack, root, "prod"); got != "-var-file=../envs/prod/terraform.tfvars" {
+	if got := varFileArg(stack, root, testEnv); got != "-var-file=../envs/prod/terraform.tfvars" {
 		t.Fatalf("var file arg: got %q", got)
 	}
 }
@@ -38,8 +38,8 @@ func TestIsInitialised(t *testing.T) {
 	if isInitialised(stack) {
 		t.Fatal("expected stack without .terraform to be uninitialised")
 	}
-	if err := os.MkdirAll(filepath.Join(stack, ".terraform"), 0o755); err != nil {
-		t.Fatalf("mkdir .terraform: %v", err)
+	if err := os.MkdirAll(filepath.Join(stack, terraformDirName), 0o755); err != nil {
+		t.Fatalf(errMkdirTerraform, err)
 	}
 	if !isInitialised(stack) {
 		t.Fatal("expected stack with .terraform to be initialised")
@@ -57,7 +57,7 @@ func TestRunTerraformStreamsAndReturnsExitCode(t *testing.T) {
 			AccessKeyID:     "AKIAOUT",
 			SecretAccessKey: "secret",
 			SessionToken:    "token",
-			Region:          "us-east-1",
+			Region:          testRegion,
 		},
 		stdout: &stdout,
 		stderr: &stderr,
@@ -78,19 +78,19 @@ func TestRunTerraformStreamsAndReturnsExitCode(t *testing.T) {
 
 func TestTerraformInitUsesBackendArgs(t *testing.T) {
 	root := t.TempDir()
-	stack := initRepoLayout(t, root, "prod")
+	stack := initRepoLayout(t, root, testEnv)
 	writeFile(t, filepath.Join(stack, "backend.local.hcl"), "bucket = \"local\"\n")
-	traceFile := filepath.Join(t.TempDir(), "trace.txt")
+	traceFile := filepath.Join(t.TempDir(), traceFileName)
 	t.Setenv("TRACE_FILE", traceFile)
 	setupFakeTerraform(t, `printf '%s\n' "$*" > "$TRACE_FILE"`)
 
-	err := terraformInit(context.Background(), stack, root, "prod", rawCreds{Region: "us-east-1"})
+	err := terraformInit(context.Background(), stack, root, testEnv, rawCreds{Region: testRegion})
 	if err != nil {
 		t.Fatalf("terraformInit: %v", err)
 	}
 	got, err := os.ReadFile(traceFile)
 	if err != nil {
-		t.Fatalf("read trace file: %v", err)
+		t.Fatalf(errReadTraceFile, err)
 	}
 	want := "init -backend-config=backend.local.hcl -backend-config=../envs/prod/backend.hcl\n"
 	if string(got) != want {
@@ -100,10 +100,10 @@ func TestTerraformInitUsesBackendArgs(t *testing.T) {
 
 func TestEnsureInitSkipsWhenAlreadyInitialised(t *testing.T) {
 	stack := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(stack, ".terraform"), 0o755); err != nil {
-		t.Fatalf("mkdir .terraform: %v", err)
+	if err := os.MkdirAll(filepath.Join(stack, terraformDirName), 0o755); err != nil {
+		t.Fatalf(errMkdirTerraform, err)
 	}
-	if err := ensureInit(context.Background(), stack, t.TempDir(), "prod", rawCreds{Region: "us-east-1"}); err != nil {
+	if err := ensureInit(context.Background(), stack, t.TempDir(), testEnv, rawCreds{Region: testRegion}); err != nil {
 		t.Fatalf("ensureInit should skip: %v", err)
 	}
 }
@@ -111,17 +111,17 @@ func TestEnsureInitSkipsWhenAlreadyInitialised(t *testing.T) {
 func TestEnsureInitRunsInitWhenNeeded(t *testing.T) {
 	d.log = newLogger("error")
 	root := t.TempDir()
-	stack := initRepoLayout(t, root, "prod")
-	traceFile := filepath.Join(t.TempDir(), "trace.txt")
+	stack := initRepoLayout(t, root, testEnv)
+	traceFile := filepath.Join(t.TempDir(), traceFileName)
 	t.Setenv("TRACE_FILE", traceFile)
 	setupFakeTerraform(t, `printf '%s\n' "$1" > "$TRACE_FILE"`)
 
-	if err := ensureInit(context.Background(), stack, root, "prod", rawCreds{Region: "us-east-1"}); err != nil {
+	if err := ensureInit(context.Background(), stack, root, testEnv, rawCreds{Region: testRegion}); err != nil {
 		t.Fatalf("ensureInit: %v", err)
 	}
 	got, err := os.ReadFile(traceFile)
 	if err != nil {
-		t.Fatalf("read trace file: %v", err)
+		t.Fatalf(errReadTraceFile, err)
 	}
 	if string(got) != "init\n" {
 		t.Fatalf("expected terraform init to run, got %q", string(got))

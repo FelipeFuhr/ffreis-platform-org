@@ -6,6 +6,15 @@ import (
 	"testing"
 )
 
+const (
+	testEnv           = "prod"
+	testRegion        = "us-east-1"
+	terraformDirName  = ".terraform"
+	traceFileName     = "trace.txt"
+	errReadTraceFile  = "read trace file: %v"
+	errMkdirTerraform = "mkdir .terraform: %v"
+)
+
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

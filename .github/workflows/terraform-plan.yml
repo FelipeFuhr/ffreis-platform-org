@@ -4,12 +4,7 @@ name: Terraform Plan
 # Posts plan output as a PR comment.  No apply — read-only.
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - "terraform/stack/**"
-      - "terraform/envs/**"
-      - ".github/workflows/terraform-plan.yml"
+  workflow_dispatch:
 
 concurrency:
   group: terraform-plan-${{ github.ref }}

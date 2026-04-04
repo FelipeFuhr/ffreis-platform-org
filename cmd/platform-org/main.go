@@ -7,9 +7,12 @@ import (
 	"github.com/ffreis/platform-org/cmd"
 )
 
+var execute = cmd.Execute
+var exitFunc = os.Exit
+
 func main() {
-	if err := cmd.Execute(); err != nil {
+	if err := execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exitFunc(1)
 	}
 }

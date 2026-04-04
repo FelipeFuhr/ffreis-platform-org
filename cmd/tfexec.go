@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 // stackDir and envsDir define the terraform project layout for this repo.
@@ -16,16 +15,26 @@ const (
 	envsDirName  = "terraform/envs"
 )
 
-// repoRoot returns the absolute path to the repository root, resolved via
-// `git rev-parse --show-toplevel` so the CLI works correctly when invoked
-// from any subdirectory of the repository.
+// repoRoot returns the absolute path to the repository root by walking up
+// from the current working directory until it finds a .git marker. This keeps
+// the CLI working from any subdirectory without invoking git from PATH.
 func repoRoot() (string, error) {
-	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	dir, err := filepath.Abs(".")
 	if err != nil {
-		// Fall back to the working directory if git is unavailable.
-		return filepath.Abs(".")
+		return "", err
 	}
-	return strings.TrimSpace(string(out)), nil
+
+	for {
+		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return filepath.Abs(".")
+		}
+		dir = parent
+	}
 }
 
 // stackDir returns the absolute path to the terraform stack directory.

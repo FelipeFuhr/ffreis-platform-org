@@ -1,13 +1,9 @@
 name: Terraform Plan
 
-# Dry-run plan on every PR that touches Terraform or environment files.
-# Posts plan output as a PR comment.  No apply — read-only.
+# Manual-only Terraform plan workflow.
+# No automatic PR execution.
 
 on:
-  pull_request:
-    paths:
-      - "terraform/**"
-      - ".terraform-version"
   workflow_dispatch:
 
 concurrency:

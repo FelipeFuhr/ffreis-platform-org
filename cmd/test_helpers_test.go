@@ -7,12 +7,16 @@ import (
 )
 
 const (
-	testEnv           = "prod"
-	testRegion        = "us-east-1"
-	terraformDirName  = ".terraform"
-	traceFileName     = "trace.txt"
-	errReadTraceFile  = "read trace file: %v"
-	errMkdirTerraform = "mkdir .terraform: %v"
+	testEnv             = "prod"
+	testRegion          = "us-east-1"
+	testAccountID       = "123456789012"
+	testUserARN         = "arn:aws:iam::123456789012:user/tester"
+	terraformDirName    = ".terraform"
+	traceFileName       = "trace.txt"
+	errReadTraceFile    = "read trace file: %v"
+	errMkdirTerraform   = "mkdir .terraform: %v"
+	errUnexpectedError  = "unexpected error: %v"
+	errUnexpectedOutput = "unexpected output: %q"
 )
 
 func writeFile(t *testing.T, path, content string) {

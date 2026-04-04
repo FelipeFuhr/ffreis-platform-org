@@ -104,7 +104,7 @@ func TestLoadAWSConfigWrapsLoaderError(t *testing.T) {
 
 	_, err := loadAWSConfig(context.Background(), "", testRegion)
 	if err == nil || err.Error() != "loading AWS config: loader failed" {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedError, err)
 	}
 }
 
@@ -118,8 +118,8 @@ func TestPersistentPreRunESuccess(t *testing.T) {
 	newSTSClient = func(sdkaws.Config) stsAPI {
 		return mockSTSClient{getCallerIdentity: func(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
 			return &sts.GetCallerIdentityOutput{
-				Account: sdkaws.String("123456789012"),
-				Arn:     sdkaws.String("arn:aws:iam::123456789012:user/tester"),
+				Account: sdkaws.String(testAccountID),
+				Arn:     sdkaws.String(testUserARN),
 			}, nil
 		}}
 	}
@@ -139,7 +139,7 @@ func TestPersistentPreRunESuccess(t *testing.T) {
 	if err := rootCmd.PersistentPreRunE(rootCmd, nil); err != nil {
 		t.Fatalf("PersistentPreRunE: %v", err)
 	}
-	if d.accountID != "123456789012" || d.callerARN == "" {
+	if d.accountID != testAccountID || d.callerARN == "" {
 		t.Fatalf("identity not captured: account=%q arn=%q", d.accountID, d.callerARN)
 	}
 	if d.creds.AccessKeyID != "AKIA" || d.tagging == nil || d.budgets == nil || d.ce == nil {
@@ -162,7 +162,7 @@ func TestPersistentPreRunEIdentityError(t *testing.T) {
 
 	err := rootCmd.PersistentPreRunE(rootCmd, nil)
 	if err == nil || err.Error() != "verifying AWS credentials: identity failed" {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedError, err)
 	}
 }
 
@@ -170,9 +170,9 @@ func TestAssumeAdminRoleInitialCredentialError(t *testing.T) {
 	d.log = newLogger("error")
 	cfg := sdkaws.Config{Credentials: errCredentialsProvider{err: errors.New("retrieve failed")}}
 
-	_, _, err := assumeAdminRole(context.Background(), cfg, "arn:aws:iam::123456789012:user/tester", "123456789012", testRegion)
+	_, _, err := assumeAdminRole(context.Background(), cfg, testUserARN, testAccountID, testRegion)
 	if err == nil || err.Error() != "retrieving initial credentials: retrieve failed" {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedError, err)
 	}
 }
 
@@ -189,9 +189,9 @@ func TestAssumeAdminRoleAssumeRoleError(t *testing.T) {
 		}}
 	}
 
-	_, _, err := assumeAdminRole(context.Background(), cfg, "arn:aws:iam::123456789012:user/tester", "123456789012", testRegion)
+	_, _, err := assumeAdminRole(context.Background(), cfg, testUserARN, testAccountID, testRegion)
 	if err == nil || err.Error() != "assuming platform-admin role: assume failed" {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedError, err)
 	}
 }
 
@@ -218,7 +218,7 @@ func TestAssumeAdminRoleSuccess(t *testing.T) {
 		}}
 	}
 
-	assumedCfg, creds, err := assumeAdminRole(context.Background(), cfg, "arn:aws:iam::123456789012:user/tester", "123456789012", testRegion)
+	assumedCfg, creds, err := assumeAdminRole(context.Background(), cfg, testUserARN, testAccountID, testRegion)
 	if err != nil {
 		t.Fatalf("assumeAdminRole: %v", err)
 	}

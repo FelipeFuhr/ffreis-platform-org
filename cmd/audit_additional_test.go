@@ -90,7 +90,7 @@ func TestScanResourcesReturnsWrappedError(t *testing.T) {
 
 	_, err := scanResources(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "GetResources: tagging failed") {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedError, err)
 	}
 }
 
@@ -118,111 +118,105 @@ func TestPrintResourceTableRendersDefaultsAndTruncates(t *testing.T) {
 	}
 }
 
-func TestPrintBudgetsCoversErrorEmptyAndSuccess(t *testing.T) {
-	ctx := context.Background()
-	t.Run("error", func(t *testing.T) {
-		buf := captureAuditOutput(t)
-		old := describeBudgetsFn
-		defer func() { describeBudgetsFn = old }()
-		describeBudgetsFn = func(context.Context, *budgets.DescribeBudgetsInput) (*budgets.DescribeBudgetsOutput, error) {
-			return nil, errors.New("boom")
-		}
+func TestPrintBudgetsReportsError(t *testing.T) {
+	buf := captureAuditOutput(t)
+	old := describeBudgetsFn
+	defer func() { describeBudgetsFn = old }()
+	describeBudgetsFn = func(context.Context, *budgets.DescribeBudgetsInput) (*budgets.DescribeBudgetsOutput, error) {
+		return nil, errors.New("boom")
+	}
 
-		printBudgets(ctx)
-		if !strings.Contains(buf.String(), "could not list: boom") {
-			t.Fatalf("unexpected output: %q", buf.String())
-		}
-	})
-
-	t.Run("empty", func(t *testing.T) {
-		buf := captureAuditOutput(t)
-		old := describeBudgetsFn
-		defer func() { describeBudgetsFn = old }()
-		describeBudgetsFn = func(context.Context, *budgets.DescribeBudgetsInput) (*budgets.DescribeBudgetsOutput, error) {
-			return &budgets.DescribeBudgetsOutput{}, nil
-		}
-
-		printBudgets(ctx)
-		if !strings.Contains(buf.String(), "none found") {
-			t.Fatalf("unexpected output: %q", buf.String())
-		}
-	})
-
-	t.Run("success", func(t *testing.T) {
-		buf := captureAuditOutput(t)
-		old := describeBudgetsFn
-		defer func() { describeBudgetsFn = old }()
-		d.accountID = "123456789012"
-		describeBudgetsFn = func(_ context.Context, input *budgets.DescribeBudgetsInput) (*budgets.DescribeBudgetsOutput, error) {
-			if sdkaws.ToString(input.AccountId) != d.accountID {
-				t.Fatalf("account id: want %s got %s", d.accountID, sdkaws.ToString(input.AccountId))
-			}
-			return &budgets.DescribeBudgetsOutput{
-				Budgets: []budgettypes.Budget{{
-					BudgetName:  sdkaws.String("platform-budget"),
-					BudgetLimit: &budgettypes.Spend{Amount: sdkaws.String("100.00")},
-				}},
-			}, nil
-		}
-
-		printBudgets(ctx)
-		if !strings.Contains(buf.String(), "platform-budget") || !strings.Contains(buf.String(), "$100.00/month") {
-			t.Fatalf("unexpected output: %q", buf.String())
-		}
-	})
+	printBudgets(context.Background())
+	if !strings.Contains(buf.String(), "could not list: boom") {
+		t.Fatalf(errUnexpectedOutput, buf.String())
+	}
 }
 
-func TestLoadActiveCostTagsHandlesPaginationAndErrors(t *testing.T) {
-	ctx := context.Background()
-	t.Run("pagination", func(t *testing.T) {
-		old := listCostAllocationTagsFn
-		defer func() { listCostAllocationTagsFn = old }()
-		calls := 0
-		listCostAllocationTagsFn = func(_ context.Context, input *costexplorer.ListCostAllocationTagsInput) (*costexplorer.ListCostAllocationTagsOutput, error) {
-			calls++
-			switch calls {
-			case 1:
-				if input.Status != cetypes.CostAllocationTagStatusActive {
-					t.Fatalf("unexpected status: %s", input.Status)
-				}
-				return &costexplorer.ListCostAllocationTagsOutput{
-					CostAllocationTags: []cetypes.CostAllocationTag{{TagKey: sdkaws.String("Stack")}},
-					NextToken:          sdkaws.String("next-token"),
-				}, nil
-			case 2:
-				if sdkaws.ToString(input.NextToken) != "next-token" {
-					t.Fatalf("next token: want next-token got %q", sdkaws.ToString(input.NextToken))
-				}
-				return &costexplorer.ListCostAllocationTagsOutput{
-					CostAllocationTags: []cetypes.CostAllocationTag{{TagKey: sdkaws.String("Project")}},
-				}, nil
-			default:
-				t.Fatalf("unexpected call %d", calls)
-				return nil, nil
+func TestPrintBudgetsReportsEmpty(t *testing.T) {
+	buf := captureAuditOutput(t)
+	old := describeBudgetsFn
+	defer func() { describeBudgetsFn = old }()
+	describeBudgetsFn = func(context.Context, *budgets.DescribeBudgetsInput) (*budgets.DescribeBudgetsOutput, error) {
+		return &budgets.DescribeBudgetsOutput{}, nil
+	}
+
+	printBudgets(context.Background())
+	if !strings.Contains(buf.String(), "none found") {
+		t.Fatalf(errUnexpectedOutput, buf.String())
+	}
+}
+
+func TestPrintBudgetsReportsSuccess(t *testing.T) {
+	buf := captureAuditOutput(t)
+	old := describeBudgetsFn
+	defer func() { describeBudgetsFn = old }()
+	d.accountID = testAccountID
+	describeBudgetsFn = func(_ context.Context, input *budgets.DescribeBudgetsInput) (*budgets.DescribeBudgetsOutput, error) {
+		if sdkaws.ToString(input.AccountId) != d.accountID {
+			t.Fatalf("account id: want %s got %s", d.accountID, sdkaws.ToString(input.AccountId))
+		}
+		return &budgets.DescribeBudgetsOutput{
+			Budgets: []budgettypes.Budget{{
+				BudgetName:  sdkaws.String("platform-budget"),
+				BudgetLimit: &budgettypes.Spend{Amount: sdkaws.String("100.00")},
+			}},
+		}, nil
+	}
+
+	printBudgets(context.Background())
+	if !strings.Contains(buf.String(), "platform-budget") || !strings.Contains(buf.String(), "$100.00/month") {
+		t.Fatalf(errUnexpectedOutput, buf.String())
+	}
+}
+
+func TestLoadActiveCostTagsHandlesPagination(t *testing.T) {
+	old := listCostAllocationTagsFn
+	defer func() { listCostAllocationTagsFn = old }()
+	calls := 0
+	listCostAllocationTagsFn = func(_ context.Context, input *costexplorer.ListCostAllocationTagsInput) (*costexplorer.ListCostAllocationTagsOutput, error) {
+		calls++
+		switch calls {
+		case 1:
+			if input.Status != cetypes.CostAllocationTagStatusActive {
+				t.Fatalf("unexpected status: %s", input.Status)
 			}
+			return &costexplorer.ListCostAllocationTagsOutput{
+				CostAllocationTags: []cetypes.CostAllocationTag{{TagKey: sdkaws.String("Stack")}},
+				NextToken:          sdkaws.String("next-token"),
+			}, nil
+		case 2:
+			if sdkaws.ToString(input.NextToken) != "next-token" {
+				t.Fatalf("next token: want next-token got %q", sdkaws.ToString(input.NextToken))
+			}
+			return &costexplorer.ListCostAllocationTagsOutput{
+				CostAllocationTags: []cetypes.CostAllocationTag{{TagKey: sdkaws.String("Project")}},
+			}, nil
+		default:
+			t.Fatalf("unexpected call %d", calls)
+			return nil, nil
 		}
+	}
 
-		active, err := loadActiveCostTags(ctx)
-		if err != nil {
-			t.Fatalf("loadActiveCostTags: %v", err)
-		}
-		if !active["Stack"] || !active["Project"] {
-			t.Fatalf("unexpected active tags: %#v", active)
-		}
-	})
+	active, err := loadActiveCostTags(context.Background())
+	if err != nil {
+		t.Fatalf("loadActiveCostTags: %v", err)
+	}
+	if !active["Stack"] || !active["Project"] {
+		t.Fatalf("unexpected active tags: %#v", active)
+	}
+}
 
-	t.Run("error", func(t *testing.T) {
-		old := listCostAllocationTagsFn
-		defer func() { listCostAllocationTagsFn = old }()
-		listCostAllocationTagsFn = func(context.Context, *costexplorer.ListCostAllocationTagsInput) (*costexplorer.ListCostAllocationTagsOutput, error) {
-			return nil, errors.New("cost explorer failed")
-		}
+func TestLoadActiveCostTagsReturnsError(t *testing.T) {
+	old := listCostAllocationTagsFn
+	defer func() { listCostAllocationTagsFn = old }()
+	listCostAllocationTagsFn = func(context.Context, *costexplorer.ListCostAllocationTagsInput) (*costexplorer.ListCostAllocationTagsOutput, error) {
+		return nil, errors.New("cost explorer failed")
+	}
 
-		_, err := loadActiveCostTags(ctx)
-		if err == nil || !strings.Contains(err.Error(), "cost explorer failed") {
-			t.Fatalf("unexpected error: %v", err)
-		}
-	})
+	_, err := loadActiveCostTags(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "cost explorer failed") {
+		t.Fatalf(errUnexpectedError, err)
+	}
 }
 
 func TestPrintCostTagStatuses(t *testing.T) {
@@ -260,7 +254,7 @@ func TestPrintBudgetSectionHandlesCostTagFailure(t *testing.T) {
 	printBudgetSection(context.Background())
 	out := buf.String()
 	if !strings.Contains(out, "Budget & cost coverage:") || !strings.Contains(out, "tag listing failed") {
-		t.Fatalf("unexpected output: %q", out)
+		t.Fatalf(errUnexpectedOutput, out)
 	}
 }
 
@@ -275,7 +269,7 @@ func TestAuditCommandRunEPrintsSummary(t *testing.T) {
 		printBudgetSectionFn = oldBudget
 	}()
 
-	d.accountID = "123456789012"
+	d.accountID = testAccountID
 	d.region = testRegion
 	tableCalled := false
 	budgetCalled := false
@@ -296,7 +290,7 @@ func TestAuditCommandRunEPrintsSummary(t *testing.T) {
 		t.Fatalf("expected table and budget printers to run: table=%v budget=%v", tableCalled, budgetCalled)
 	}
 	if !strings.Contains(buf.String(), "Summary: 1 owned, 1 unowned, 1 with tag issues") {
-		t.Fatalf("unexpected summary output: %q", buf.String())
+		t.Fatalf(errUnexpectedOutput, buf.String())
 	}
 }
 
@@ -309,6 +303,6 @@ func TestAuditCommandRunEReturnsWrappedError(t *testing.T) {
 
 	err := auditCmd.RunE(auditCmd, nil)
 	if err == nil || !strings.Contains(err.Error(), "scanning resources: scan failed") {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf(errUnexpectedError, err)
 	}
 }

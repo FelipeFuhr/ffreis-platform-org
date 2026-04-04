@@ -211,6 +211,7 @@ func newLogger(level string) *slog.Logger {
 }
 
 func init() {
+	rootCmd.Version = version
 	f := rootCmd.PersistentFlags()
 	f.StringVar(&d.profile, "profile", "", "AWS named profile (or use AWS_ACCESS_KEY_ID env vars)")
 	f.StringVar(&d.region, "region", "us-east-1", "AWS region")

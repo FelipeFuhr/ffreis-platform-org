@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -114,16 +113,6 @@ func runTerraform(ctx context.Context, opts runOptions) (int, error) {
 		return -1, fmt.Errorf("running terraform: %w", err)
 	}
 	return 0, nil
-}
-
-// captureOutput runs terraform and captures stdout+stderr as strings.
-// Used for plan output parsing in audit.
-func captureOutput(ctx context.Context, opts runOptions) (stdout, stderr string, exitCode int, err error) {
-	var outBuf, errBuf bytes.Buffer
-	opts.stdout = &outBuf
-	opts.stderr = &errBuf
-	exitCode, err = runTerraform(ctx, opts)
-	return outBuf.String(), errBuf.String(), exitCode, err
 }
 
 // terraformInit runs terraform init in the given stack directory.

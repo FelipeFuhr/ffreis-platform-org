@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -45,10 +46,11 @@ func TestIsInitialised(t *testing.T) {
 	}
 }
 
-func TestCaptureOutputReturnsStreamsAndExitCode(t *testing.T) {
+func TestRunTerraformStreamsAndReturnsExitCode(t *testing.T) {
 	setupFakeTerraform(t, `printf 'stdout:%s\n' "$*"; printf 'stderr:%s\n' "$AWS_ACCESS_KEY_ID" >&2; exit 2`)
 
-	stdout, stderr, code, err := captureOutput(context.Background(), runOptions{
+	var stdout, stderr bytes.Buffer
+	code, err := runTerraform(context.Background(), runOptions{
 		stackPath: t.TempDir(),
 		args:      []string{"plan", "-no-color"},
 		creds: rawCreds{
@@ -57,18 +59,20 @@ func TestCaptureOutputReturnsStreamsAndExitCode(t *testing.T) {
 			SessionToken:    "token",
 			Region:          "us-east-1",
 		},
+		stdout: &stdout,
+		stderr: &stderr,
 	})
 	if err != nil {
-		t.Fatalf("captureOutput: %v", err)
+		t.Fatalf("runTerraform: %v", err)
 	}
 	if code != 2 {
 		t.Fatalf("exit code: want 2 got %d", code)
 	}
-	if !strings.Contains(stdout, "stdout:plan -no-color") {
-		t.Fatalf("stdout missing args: %q", stdout)
+	if !strings.Contains(stdout.String(), "stdout:plan -no-color") {
+		t.Fatalf("stdout missing args: %q", stdout.String())
 	}
-	if !strings.Contains(stderr, "stderr:AKIAOUT") {
-		t.Fatalf("stderr missing env injection: %q", stderr)
+	if !strings.Contains(stderr.String(), "stderr:AKIAOUT") {
+		t.Fatalf("stderr missing env injection: %q", stderr.String())
 	}
 }
 

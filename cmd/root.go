@@ -18,6 +18,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type stsAPI interface {
+	GetCallerIdentity(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+	AssumeRole(context.Context, *sts.AssumeRoleInput, ...func(*sts.Options)) (*sts.AssumeRoleOutput, error)
+}
+
+var (
+	loadDefaultConfig = sdkcfg.LoadDefaultConfig
+	loadAWSConfigFn   = loadAWSConfig
+	assumeAdminRoleFn = assumeAdminRole
+	newSTSClient      = func(cfg sdkaws.Config) stsAPI { return sts.NewFromConfig(cfg) }
+	newTaggingClient  = resourcegroupstaggingapi.NewFromConfig
+	newBudgetsClient  = budgets.NewFromConfig
+	newCEClient       = costexplorer.NewFromConfig
+)
+
 // deps holds shared state built once in PersistentPreRunE and read by all
 // subcommands. Package-scoped for simplicity within this single-package CLI.
 var d struct {
@@ -69,12 +84,12 @@ var rootCmd = &cobra.Command{
 
 		d.log = newLogger(d.logLevel)
 
-		awsCfg, err := loadAWSConfig(ctx, d.profile, d.region)
+		awsCfg, err := loadAWSConfigFn(ctx, d.profile, d.region)
 		if err != nil {
 			return err
 		}
 
-		stsClient := sts.NewFromConfig(awsCfg)
+		stsClient := newSTSClient(awsCfg)
 		identity, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 		if err != nil {
 			return fmt.Errorf("verifying AWS credentials: %w", err)
@@ -89,15 +104,15 @@ var rootCmd = &cobra.Command{
 		)
 
 		// Assume platform-admin unless already running as it (or as root which can't).
-		assumedCfg, assumedCreds, err := assumeAdminRole(ctx, awsCfg, d.callerARN, d.accountID, d.region)
+		assumedCfg, assumedCreds, err := assumeAdminRoleFn(ctx, awsCfg, d.callerARN, d.accountID, d.region)
 		if err != nil {
 			return err
 		}
 
 		d.creds = assumedCreds
-		d.tagging = resourcegroupstaggingapi.NewFromConfig(assumedCfg)
-		d.budgets = budgets.NewFromConfig(assumedCfg)
-		d.ce = costexplorer.NewFromConfig(assumedCfg)
+		d.tagging = newTaggingClient(assumedCfg)
+		d.budgets = newBudgetsClient(assumedCfg)
+		d.ce = newCEClient(assumedCfg)
 
 		return nil
 	},
@@ -125,7 +140,7 @@ func loadAWSConfig(ctx context.Context, profile, region string) (sdkaws.Config, 
 			"no AWS credentials: set --profile or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY",
 		)
 	}
-	cfg, err := sdkcfg.LoadDefaultConfig(ctx, opts...)
+	cfg, err := loadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return sdkaws.Config{}, fmt.Errorf("loading AWS config: %w", err)
 	}
@@ -163,7 +178,7 @@ func assumeAdminRole(ctx context.Context, cfg sdkaws.Config, callerARN, accountI
 	}
 
 	roleARN := fmt.Sprintf("arn:aws:iam::%s:role/platform-admin", accountID)
-	stsClient := sts.NewFromConfig(cfg)
+	stsClient := newSTSClient(cfg)
 	out, err := stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
 		RoleArn:         sdkaws.String(roleARN),
 		RoleSessionName: sdkaws.String("platform-org-cli"),
@@ -181,7 +196,7 @@ func assumeAdminRole(ctx context.Context, cfg sdkaws.Config, callerARN, accountI
 		Region:          region,
 	}
 
-	assumedCfg, err := sdkcfg.LoadDefaultConfig(ctx,
+	assumedCfg, err := loadDefaultConfig(ctx,
 		sdkcfg.WithRegion(region),
 		sdkcfg.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(rc.AccessKeyID, rc.SecretAccessKey, rc.SessionToken),

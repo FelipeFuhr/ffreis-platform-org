@@ -10,6 +10,8 @@ BOOTSTRAP_BIN ?= platform-bootstrap
 
 CLI_BIN  ?= ./bin/platform-org
 CLI_SRC  := ./cmd/platform-org
+GO       ?= $(shell command -v go 2>/dev/null || echo /usr/local/go/bin/go)
+GOFMT    ?= $(shell command -v gofmt 2>/dev/null || echo /usr/local/go/bin/gofmt)
 
 FETCHED_FILE = $(ENVS_DIR)/$(ENV)/fetched.auto.tfvars.json
 BACKEND_LOCAL_FILE = $(STACK)/backend.local.hcl
@@ -34,11 +36,11 @@ _require_fetched: _require_env
 
 ## build: compile the platform-org CLI to ./bin/platform-org
 build:
-	go build -o $(CLI_BIN) $(CLI_SRC)
+	$(GO) build -o $(CLI_BIN) $(CLI_SRC)
 
 ## go-test: run Go unit tests for the CLI
 go-test:
-	go test ./... -v
+	$(GO) test ./... -v
 
 ## go-audit [ENV=prod]: run the AWS SDK audit (ownership, tags, budget coverage)
 go-audit:
@@ -101,12 +103,20 @@ nuke: _require_fetched
 		-var-file=$(ENVS_REL)/$(ENV)/terraform.tfvars \
 		-auto-approve
 
-## fmt: format all Terraform files
+## fmt: format all Go and Terraform files
 fmt:
+	./scripts/hooks/check_required_tools.sh terraform
+	$(GOFMT) -w .
 	terraform fmt -recursive .
 
-## fmt-check: fail if any Terraform file is not formatted
+## fmt-check: fail if any Go or Terraform file is not formatted
 fmt-check:
+	./scripts/hooks/check_required_tools.sh terraform
+	@unformatted=$$($(GOFMT) -l .); \
+	if [ -n "$$unformatted" ]; then \
+	  printf "The following files need gofmt:\n%s\n\nFix with: gofmt -w .\n" "$$unformatted"; \
+	  exit 1; \
+	fi
 	terraform fmt -check -recursive .
 
 ## validate: validate the stack configuration (static)

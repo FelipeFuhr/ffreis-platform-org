@@ -16,6 +16,9 @@ install_hint() {
     terraform)
       echo "https://developer.hashicorp.com/terraform/downloads"
       ;;
+    go|gofmt|govulncheck)
+      echo "https://go.dev/dl/"
+      ;;
     tflint)
       echo "https://github.com/terraform-linters/tflint#installation"
       ;;

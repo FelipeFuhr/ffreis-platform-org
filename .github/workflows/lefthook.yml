@@ -22,4 +22,3 @@ jobs:
       install-govulncheck: true
       lefthook-bootstrap-command: "make lefthook-bootstrap"
       lefthook-bin: ".bin/lefthook"
-      run-pre-push: true

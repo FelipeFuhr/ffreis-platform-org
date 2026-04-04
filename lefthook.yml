@@ -7,6 +7,8 @@ pre-commit:
       run: ./scripts/hooks/check_large_files.sh
     hygiene-binary-files:
       run: ./scripts/hooks/check_binary_files.sh
+    go-mod-drift:
+      run: ./scripts/hooks/check_go_mod_drift.sh
     fmt-check:
       run: make fmt-check
     lint:
@@ -21,6 +23,8 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
+    go-test:
+      run: make go-test
     lint:
       run: ./scripts/hooks/run_tflint_if_available.sh
     validate:

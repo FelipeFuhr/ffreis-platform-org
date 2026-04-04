@@ -11,12 +11,13 @@
 # ---------------------------------------------------------------------------
 
 module "tf_state_runtime" {
-  source = "../../../ffreis-platform-terraform-modules/modules/s3-bucket"
+  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/s3-bucket?ref=main"
 
-  bucket             = "${var.org}-tf-state-runtime"
-  versioning_enabled = true
-  sse_algorithm      = "AES256"
-  force_destroy      = false
+  bucket                = "${var.org}-tf-state-runtime"
+  versioning_enabled    = true
+  sse_algorithm         = "AES256"
+  logging_target_bucket = ""
+  force_destroy         = false
 
   # Expire noncurrent state versions after 90 days to contain storage costs.
   lifecycle_rules = [
@@ -37,7 +38,7 @@ module "tf_state_runtime" {
 }
 
 module "tf_locks_runtime" {
-  source = "../../../ffreis-platform-terraform-modules/modules/dynamodb-table"
+  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/dynamodb-table?ref=main"
 
   name     = "${var.org}-tf-locks-runtime"
   hash_key = "LockID"

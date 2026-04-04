@@ -30,10 +30,10 @@ var d struct {
 	// creds holds assumed-role (or initial) credentials for subprocess injection.
 	creds rawCreds
 	// AWS service clients built from the assumed-role config.
-	tagging    *resourcegroupstaggingapi.Client
-	budgets    *budgets.Client
-	ce         *costexplorer.Client
-	log        *slog.Logger
+	tagging *resourcegroupstaggingapi.Client
+	budgets *budgets.Client
+	ce      *costexplorer.Client
+	log     *slog.Logger
 }
 
 // rawCreds are the actual static credentials injected into terraform's env.

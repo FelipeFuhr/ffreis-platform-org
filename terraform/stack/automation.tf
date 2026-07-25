@@ -24,6 +24,7 @@ locals {
     Stack       = "platform-org"
     Project     = var.project
     Environment = var.environment
+    CostCenter  = "platform"
   }, var.tags)
 }
 

@@ -568,6 +568,16 @@ func TestStatusFromTerraformChangeCreate(t *testing.T) {
 	}
 }
 
+func TestStatusFromTerraformChangeUpdate(t *testing.T) {
+	// A plain in-place update (e.g. a tag change) is routine apply work, not
+	// ownership drift — it must not trip doctor's blocking WARN gate.
+	change := terraformResourceChange{Change: terraformPlanChange{Actions: []string{"update"}}}
+	status, issues := statusFromTerraformChange(change)
+	if status != "OK" || len(issues) != 0 {
+		t.Fatalf(testAuditOKNoIssuesErrorf, status, issues)
+	}
+}
+
 func TestStatusFromTerraformChangeReplace(t *testing.T) {
 	change := terraformResourceChange{Change: terraformPlanChange{Actions: []string{"delete", "create"}}}
 	status, issues := statusFromTerraformChange(change)

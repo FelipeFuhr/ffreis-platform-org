@@ -785,6 +785,13 @@ func statusFromTerraformChange(change terraformResourceChange) (string, []string
 	if equalStringSlices(actions, []string{"create"}) {
 		return "MISSING", nil
 	}
+	if equalStringSlices(actions, []string{"update"}) {
+		// A plain in-place update (e.g. adding/changing a tag) is exactly what
+		// `apply` exists to do — it's not ownership drift, so it must not trip
+		// doctor's blocking "ownership tags" gate. Only genuinely unexpected
+		// actions (delete, replace) still warrant a WARN below.
+		return "OK", nil
+	}
 	return "WARN", []string{"terraform planned action: " + strings.Join(actions, ",")}
 }
 
@@ -991,23 +998,26 @@ func loadPlatformOrgEnvConfig() (platformOrgEnvConfig, error) {
 	return cfg, nil
 }
 
-func organizationExists(ctx context.Context) (bool, error) {
+// organizationARN resolves the organization's own ARN — aws_organizations_organization
+// has no name attribute, so terraform's expected identity resolves to arn/id instead,
+// and matchExpectedAuditResource tries arn first. See explicitPlatformOrgCleanupTargets.
+func organizationARN(ctx context.Context) (string, bool, error) {
 	client := organizations.NewFromConfig(d.awsCfg)
-	out, err := client.ListRoots(ctx, &organizations.ListRootsInput{})
+	out, err := client.DescribeOrganization(ctx, &organizations.DescribeOrganizationInput{})
 	if err == nil {
-		return len(out.Roots) > 0, nil
-	}
-	if _, describeErr := client.DescribeOrganization(ctx, &organizations.DescribeOrganizationInput{}); describeErr == nil {
-		return true, nil
+		if out.Organization == nil {
+			return "", false, nil
+		}
+		return sdkaws.ToString(out.Organization.Arn), true, nil
 	}
 	var notInUse *organizationstypes.AWSOrganizationsNotInUseException
 	if strings.Contains(strings.ToLower(err.Error()), "not in use") || strings.Contains(strings.ToLower(err.Error()), "awsorganizationsnotinuse") {
-		return false, nil
+		return "", false, nil
 	}
 	if errors.As(err, &notInUse) {
-		return false, nil
+		return "", false, nil
 	}
-	return false, err
+	return "", false, err
 }
 
 func organizationalUnitExists(ctx context.Context, name string) (bool, error) {
@@ -1046,14 +1056,20 @@ func organizationPolicyExists(ctx context.Context, name string) (bool, error) {
 	return policy != nil, nil
 }
 
-func organizationPolicyAttachmentExists(ctx context.Context, policyName, targetName string) (bool, error) {
+// organizationPolicyAttachmentIdentity resolves the same composite id
+// ("<target-id>:<policy-id>" — confirmed against the live terraform.tfstate;
+// target first, not policy first) terraform computes for
+// aws_organizations_policy_attachment. That resource type has neither a name
+// nor an arn attribute, so terraform's expected identity falls through to
+// this id — see explicitPlatformOrgCleanupTargets.
+func organizationPolicyAttachmentIdentity(ctx context.Context, policyName, targetName string) (string, bool, error) {
 	client := organizations.NewFromConfig(d.awsCfg)
 	policy, err := findOrganizationPolicyByName(ctx, client, policyName)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	if policy == nil || policy.Id == nil {
-		return false, nil
+		return "", false, nil
 	}
 
 	var nextToken *string
@@ -1063,15 +1079,15 @@ func organizationPolicyAttachmentExists(ctx context.Context, policyName, targetN
 			NextToken: nextToken,
 		})
 		if err != nil {
-			return false, err
+			return "", false, err
 		}
 		for _, target := range out.Targets {
 			if sdkaws.ToString(target.Name) == targetName {
-				return true, nil
+				return sdkaws.ToString(target.TargetId) + ":" + sdkaws.ToString(policy.Id), true, nil
 			}
 		}
 		if sdkaws.ToString(out.NextToken) == "" {
-			return false, nil
+			return "", false, nil
 		}
 		nextToken = out.NextToken
 	}

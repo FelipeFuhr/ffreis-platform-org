@@ -321,10 +321,6 @@ func explicitPlatformOrgCleanupTargets(ctx context.Context) ([]auditResource, er
 
 	checks := []existsCheck{
 		{
-			resource: auditResource{status: "OK", resourceType: resourceTypeOrganizationsOrganization, name: "organization", stack: stackNamePlatformOrg},
-			exists:   organizationExists,
-		},
-		{
 			resource: auditResource{status: "OK", resourceType: "organizations/organizational-unit", name: "environments", stack: stackNamePlatformOrg},
 			exists: func(ctx context.Context) (bool, error) {
 				return organizationalUnitExists(ctx, "environments")
@@ -349,37 +345,25 @@ func explicitPlatformOrgCleanupTargets(ctx context.Context) ([]auditResource, er
 			},
 		},
 		{
-			resource: auditResource{status: "OK", resourceType: resourceTypeOrganizationsPolicyAttachment, name: "deny-iam-user-creation@environments", stack: stackNamePlatformOrg},
-			exists: func(ctx context.Context) (bool, error) {
-				return organizationPolicyAttachmentExists(ctx, policyNameDenyIAMUserCreation, "environments")
-			},
-		},
-		{
-			resource: auditResource{status: "OK", resourceType: resourceTypeOrganizationsPolicyAttachment, name: "deny-disable-cloudtrail@environments", stack: stackNamePlatformOrg},
-			exists: func(ctx context.Context) (bool, error) {
-				return organizationPolicyAttachmentExists(ctx, policyNameDenyDisableCloudTrail, "environments")
-			},
-		},
-		{
-			resource: auditResource{status: "OK", resourceType: resourceTypeOrganizationsPolicyAttachment, name: "deny-leave-organization@environments", stack: stackNamePlatformOrg},
-			exists: func(ctx context.Context) (bool, error) {
-				return organizationPolicyAttachmentExists(ctx, orgPolicyDenyLeaveOrganizationName, "environments")
-			},
-		},
-		{
 			resource: auditResource{status: "OK", resourceType: "budgets/budget", name: platformAdminBudgetName(d.org), stack: stackNamePlatformOrg},
 			exists: func(ctx context.Context) (bool, error) {
 				return budgetExists(ctx, platformAdminBudgetName(d.org))
 			},
 		},
 		{
-			resource: auditResource{status: "OK", resourceType: resourceTypeIAMRole, name: activateLambdaName(d.org), stack: stackNamePlatformOrg},
+			// arn is populated (not left blank like most explicit checks) because
+			// this role's name collides with the Lambda function of the same name
+			// (both "ffreis-activate-cost-tags") — without an arn, name-based
+			// matching against two same-stack, same-name candidates is ambiguous
+			// and matchExpectedAuditResource gives up. IAM role ARNs are fully
+			// deterministic, so no extra AWS call is needed to populate this.
+			resource: auditResource{status: "OK", resourceType: resourceTypeIAMRole, name: activateLambdaName(d.org), arn: fmt.Sprintf("arn:aws:iam::%s:role/%s", d.accountID, activateLambdaName(d.org)), stack: stackNamePlatformOrg},
 			exists: func(ctx context.Context) (bool, error) {
 				return iamRoleExists(ctx, activateLambdaName(d.org))
 			},
 		},
 		{
-			resource: auditResource{status: "OK", resourceType: resourceTypeIAMRole, name: schedulerInvokeRoleName(d.org), stack: stackNamePlatformOrg},
+			resource: auditResource{status: "OK", resourceType: resourceTypeIAMRole, name: schedulerInvokeRoleName(d.org), arn: fmt.Sprintf("arn:aws:iam::%s:role/%s", d.accountID, schedulerInvokeRoleName(d.org)), stack: stackNamePlatformOrg},
 			exists: func(ctx context.Context) (bool, error) {
 				return iamRoleExists(ctx, schedulerInvokeRoleName(d.org))
 			},
@@ -447,6 +431,51 @@ func explicitPlatformOrgCleanupTargets(ctx context.Context) ([]auditResource, er
 			stack:        stackNamePlatformOrg,
 		})
 	}
+
+	// aws_organizations_organization has no name attribute — terraform's expected
+	// identity resolves to its computed arn, so this must carry the real arn (not
+	// a hardcoded label) to match via matchExpectedAuditResource's arn-first lookup.
+	orgARN, orgExists, err := organizationARN(ctx)
+	if err != nil {
+		if d.log != nil {
+			d.log.Warn("explicit platform-org inventory check failed", "resource_type", resourceTypeOrganizationsOrganization, "name", "organization", "error", err)
+		}
+	} else if orgExists {
+		resources = append(resources, auditResource{
+			status:       "OK",
+			resourceType: resourceTypeOrganizationsOrganization,
+			name:         "organization",
+			arn:          orgARN,
+			stack:        stackNamePlatformOrg,
+		})
+	}
+
+	// aws_organizations_policy_attachment has neither a name nor an arn attribute —
+	// terraform's expected identity falls through to its computed id
+	// (policy_id:target_id), so name must carry that id, not a human label, to
+	// match via matchExpectedAuditResource's name-based fallback lookup.
+	for _, attachment := range []struct{ label, policyName string }{
+		{"deny-iam-user-creation@environments", policyNameDenyIAMUserCreation},
+		{"deny-disable-cloudtrail@environments", policyNameDenyDisableCloudTrail},
+		{"deny-leave-organization@environments", orgPolicyDenyLeaveOrganizationName},
+	} {
+		id, exists, err := organizationPolicyAttachmentIdentity(ctx, attachment.policyName, "environments")
+		if err != nil {
+			if d.log != nil {
+				d.log.Warn("explicit platform-org inventory check failed", "resource_type", resourceTypeOrganizationsPolicyAttachment, "name", attachment.label, "error", err)
+			}
+			continue
+		}
+		if exists {
+			resources = append(resources, auditResource{
+				status:       "OK",
+				resourceType: resourceTypeOrganizationsPolicyAttachment,
+				name:         id,
+				stack:        stackNamePlatformOrg,
+			})
+		}
+	}
+
 	for _, check := range checks {
 		exists, err := check.exists(ctx)
 		if err != nil {

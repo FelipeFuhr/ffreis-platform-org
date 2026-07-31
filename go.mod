@@ -2,8 +2,10 @@ module github.com/ffreis/platform-org
 
 go 1.25.11
 
+toolchain go1.25.12
+
 require (
-	github.com/FelipeFuhr/ffreis-platform-cli v0.2.0
+	github.com/FelipeFuhr/ffreis-platform-cli v0.3.2
 	github.com/FelipeFuhr/ffreis-platform-inventory v0.0.0-20260619230542-f3da82a2d389
 	github.com/aws/aws-lambda-go v1.54.0
 	github.com/aws/aws-sdk-go-v2 v1.41.7

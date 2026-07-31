@@ -10,6 +10,19 @@ BOOTSTRAP_BIN ?= platform-bootstrap
 
 CLI_BIN     ?= ./bin/platform-org
 CLI_SRC     := ./cmd/platform-org
+
+# Optional explicit AWS profile for the go-* CLI targets.
+#
+# Empty by default ON PURPOSE — the CLI then resolves credentials from the
+# environment (AWS_PROFILE, or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY), which
+# is what this workspace documents. Deliberately NOT reusing PROFILE above: that
+# defaults to "bootstrap" and is passed to platform-bootstrap's fetch step, not
+# to this repo's own CLI — reusing it would append --profile bootstrap to every
+# go-* call and override a working AWS_PROFILE with an unrelated profile.
+#
+# Override per call when you need to pin one: make go-apply CLI_PROFILE=ffreis-platform
+CLI_PROFILE ?=
+CLI_PROFILE_FLAG := $(if $(CLI_PROFILE),--profile $(CLI_PROFILE),)
 LAMBDA_BIN  ?= ./bin/activate-lambda
 LAMBDA_SRC  := ./lambda/activate
 GO          ?= $(shell command -v go 2>/dev/null || echo /usr/local/go/bin/go)
@@ -62,19 +75,19 @@ go-test:
 
 ## go-audit [ENV=prod]: run the AWS SDK audit (ownership, tags, budget coverage)
 go-audit:
-	$(CLI_BIN) audit --region us-east-1
+	$(CLI_BIN) audit --region us-east-1 $(CLI_PROFILE_FLAG)
 
 ## go-plan [ENV=prod]: run terraform plan via the CLI (assumes platform-admin role)
 go-plan:
-	$(CLI_BIN) plan --env $(or $(ENV),prod) --region us-east-1
+	$(CLI_BIN) plan --env $(or $(ENV),prod) --region us-east-1 $(CLI_PROFILE_FLAG)
 
 ## go-apply [ENV=prod]: run terraform apply via the CLI
 go-apply:
-	$(CLI_BIN) apply --env $(or $(ENV),prod) --region us-east-1
+	$(CLI_BIN) apply --env $(or $(ENV),prod) --region us-east-1 $(CLI_PROFILE_FLAG)
 
 ## go-nuke [ENV=prod]: destroy all resources (prompts for confirmation)
 go-nuke:
-	$(CLI_BIN) nuke --env $(or $(ENV),prod) --region us-east-1
+	$(CLI_BIN) nuke --env $(or $(ENV),prod) --region us-east-1 $(CLI_PROFILE_FLAG)
 
 ## fetch ENV=<env>: pull config from the bootstrap registry and write fetched.auto.tfvars.json
 fetch: _require_env

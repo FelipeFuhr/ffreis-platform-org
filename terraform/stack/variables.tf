@@ -22,9 +22,32 @@ variable "accounts" {
   }))
 }
 
+variable "budget_alert_emails" {
+  description = "Email addresses that receive budget alert notifications. Supplied via fetched.auto.tfvars.json (written by `make fetch ENV=prod`, sourced from the platform registry in DynamoDB) — never committed to source control."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for email in var.budget_alert_emails : can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", email))])
+    error_message = "All values must be valid email addresses."
+  }
+}
+
+# DEPRECATED — read var.budget_alert_emails instead. Kept, and optional, so a
+# fetched.auto.tfvars.json written by either bootstrap version still applies:
+# an older file carries only this key, a newer one carries only the list, and a
+# current one carries both. Defaulting to "" is what makes the newer-file case
+# work at all; without it Terraform would reject the plan for a missing
+# required variable.
 variable "budget_alert_email" {
-  description = "Email address that receives budget alert notifications. Supplied via fetched.auto.tfvars.json — never committed to source control."
+  description = "DEPRECATED: single budget alert recipient, superseded by budget_alert_emails. Populated by older versions of `bootstrap fetch`, which emit only the first recipient. Remove once no fetched.auto.tfvars.json in circulation still carries it."
   type        = string
+  default     = ""
+
+  validation {
+    condition     = var.budget_alert_email == "" || can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.budget_alert_email))
+    error_message = "Must be empty or a valid email address."
+  }
 }
 
 variable "budget_alert_threshold_usd" {

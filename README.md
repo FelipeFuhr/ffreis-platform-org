@@ -62,6 +62,14 @@ That writes:
 
 Both files are local/generated and should not be committed.
 
+Budget alert recipients come from `fetched.auto.tfvars.json` and nowhere else —
+do not set them in `terraform.tfvars`. `bootstrap fetch` writes two keys:
+`budget_alert_emails` (the full list, what this stack reads) and the deprecated
+`budget_alert_email` (first recipient only). The stack prefers the list and falls
+back to the singular, so a fetched file written before bootstrap learned to emit
+the list still yields working alerts. If neither key is present the plan fails
+rather than creating a budget that notifies nobody — re-run `make fetch ENV=prod`.
+
 ## Local usage
 
 ```sh

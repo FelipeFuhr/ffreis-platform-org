@@ -42,3 +42,38 @@
 # or any of these buckets starts holding customer PII, credentials, or
 # regulated data (state buckets hold Terraform state, not customer data).
 AVD-AWS-0132
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AVD-AWS-0086 / 0087 / 0091 / 0093 (HIGH) — the four S3 public-access-block
+# checks: block public ACLs, block public policy, ignore public ACLs, restrict
+# public buckets.
+#
+# FALSE POSITIVE IN CONTEXT, not an accepted risk. All four settings ARE
+# enabled on all three buckets; trivy simply cannot see them, because they are
+# not configured in this stack's HCL.
+#
+# Why they are not in the HCL: aws_s3_bucket.tf_state_root / tf_state_prod /
+# tf_state_dev (terraform/stack/state.tf) are *adopted* resources, imported from
+# the ffreis-platform-bootstrap CLI which pre-dates this stack. As the header
+# comment on that file states, Terraform deliberately manages ONLY tags for
+# them; versioning, encryption and public-access-block stay owned by the CLI,
+# with `ignore_changes` preventing drift. Adding
+# `aws_s3_bucket_public_access_block` resources here to silence trivy would
+# create a SECOND owner for a setting the CLI already manages — a worse outcome
+# than the warning, and a direct contradiction of the documented design.
+#
+# Verified twice on 2026-07-31, not assumed:
+#   1. Source — ffreis-platform-bootstrap internal/aws/s3.go `blockPublicAccess`
+#      sets BlockPublicAcls, BlockPublicPolicy, IgnorePublicAcls and
+#      RestrictPublicBuckets all to true, called via EnsureStateBucket
+#      (internal/bootstrap/bootstrap.go).
+#   2. Live AWS — `aws s3api get-public-access-block` on ffreis-tf-state-root,
+#      -prod and -dev each returned all four settings true.
+#
+# REVISIT IF: ownership of these buckets moves from the bootstrap CLI into this
+# Terraform stack (then declare the blocks in HCL and DELETE these four lines),
+# or if a `get-public-access-block` audit ever returns anything but all-true.
+AVD-AWS-0086
+AVD-AWS-0087
+AVD-AWS-0091
+AVD-AWS-0093

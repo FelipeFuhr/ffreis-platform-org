@@ -1,0 +1,44 @@
+# Trivy misconfiguration exclusions — deliberate, project-level policy exceptions.
+#
+# Format: one AVD/CVE ID per line. Every entry MUST carry a comment stating the
+# decision, the policy it follows, and the condition that would revoke it.
+#
+# Per the workspace AGENTS.md section "Scan findings — fix the root cause;
+# suppression is the last resort", this is a TIER-2 exception: a systemic,
+# legitimate pattern encoded ONCE at project level, rather than a scattered
+# inline suppression. House style matches
+# platform/ffreis-platform-shared-infra/.trivyignore.
+#
+# This file is trivy's default ignorefile: it is auto-loaded from the working
+# directory, so `make security`'s `trivy config --exit-code 1 --severity
+# HIGH,CRITICAL .` (run from the repo root) picks it up with no extra flag.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AVD-AWS-0132 (HIGH) — "Bucket does not encrypt data with a customer managed key."
+#
+# DELIBERATE: none of the tf-state buckets in terraform/stack/state.tf use
+# SSE-KMS with a customer managed key (CMK).
+#
+# Rationale — the fleet no-KMS cost rule. Workspace AGENTS.md § "Fixed-cost
+# discipline" lists `aws_kms_key` at $1/month EACH and names "AES256 / AWS-owned
+# key" as the sanctioned alternative. The 2026-07 fleet KMS audit independently
+# confirmed this AWS account holds zero customer-managed KMS keys account-wide
+# ($0.00 CMK spend) — so by definition none of these buckets, or anything else
+# in the account, can be using a CMK. The sibling `tf_state_runtime` bucket
+# earlier in the same file (created via the shared s3-bucket module) makes the
+# same choice explicitly (`sse_algorithm = "AES256"`).
+#
+# Buckets covered — aws_s3_bucket.tf_state_root / tf_state_prod / tf_state_dev
+# in terraform/stack/state.tf. These three are *adopted* resources (imported
+# from the ffreis-platform-bootstrap CLI, which pre-dates this Terraform
+# stack): only tags are managed here, so no encryption/versioning/public-access
+# resource appears in this stack's HCL for them at all — trivy has no config to
+# read either way. What the bootstrap CLI's `EnsureStateBucket` actually
+# configures is out of scope for this ignore entry; it is scoped narrowly to
+# the *key-ownership* question (CMK vs AWS-owned), which the account-wide zero-
+# CMK fact answers regardless of which repo owns the bucket's other settings.
+#
+# REVISIT IF: a customer-managed KMS key is ever provisioned in this account,
+# or any of these buckets starts holding customer PII, credentials, or
+# regulated data (state buckets hold Terraform state, not customer data).
+AVD-AWS-0132

@@ -90,6 +90,13 @@ jobs:
     needs: [fmt]
     permissions:
       contents: read
+      # go-test.yml's job unconditionally requests id-token: write for its L2
+      # S3-cache OIDC step (no-op here — we pass no go-cache-s3 input, so the
+      # step never runs). The caller must still grant the ceiling or GitHub
+      # rejects the whole workflow file at parse time with "the nested job
+      # 'test' is requesting 'id-token: write', but is only allowed
+      # 'id-token: none'" — confirmed live on this PR.
+      id-token: write
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@b8ded667385dea3fb24d7cf4ef46d870ae03cf8a # v1.2.1
     with:
       go-version: "1.25"

@@ -1,5 +1,5 @@
-github.com/FelipeFuhr/ffreis-platform-cli v0.2.0 h1:QbyCCDjyLZza43CrqSbHOwUtzNoSfs6XU8LkA9q755s=
-github.com/FelipeFuhr/ffreis-platform-cli v0.2.0/go.mod h1:6Vn9R5SjOWLlVxSWaZwivUL4Ps4rCihzyeZUA9WaTYY=
+github.com/FelipeFuhr/ffreis-platform-cli v0.3.2 h1:MsjbsL0wcDq/iyEvW+Xmwyfuy67v6Q5rarsTFvwfZFs=
+github.com/FelipeFuhr/ffreis-platform-cli v0.3.2/go.mod h1:L7SnkSVE6hhMPMelV1BYjxt70t2MOFqb/ht52fuI8x0=
 github.com/FelipeFuhr/ffreis-platform-inventory v0.0.0-20260619230542-f3da82a2d389 h1:gw806B8Krze6ZsGYplWOWZfpxfVfX209y5nm0uALGBY=
 github.com/FelipeFuhr/ffreis-platform-inventory v0.0.0-20260619230542-f3da82a2d389/go.mod h1:8gYbndPQIZdTEdPXoq0K8dBZe9S+k5DX5BuQPnpqHCs=
 github.com/aws/aws-lambda-go v1.54.0 h1:EGYpdyRGF88xszqlGcBewz811mJeRS+maNlLZXFheII=

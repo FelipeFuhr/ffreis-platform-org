@@ -65,10 +65,13 @@ jobs:
   govulncheck:
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@706807616c7887b62bf1f5c72050db843add3828
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@b8ded667385dea3fb24d7cf4ef46d870ae03cf8a # v1.2.1
     with:
-      go-version: "1.25.8"
+      go-version: "1.25"
       working-directory: "."
+      goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
+    secrets:
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN }}
 
   semgrep:
     permissions:

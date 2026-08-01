@@ -24,7 +24,7 @@ jobs:
   mod-tidy:
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@b8ded667385dea3fb24d7cf4ef46d870ae03cf8a # v1.2.1
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@2253ff2eda0a3d65f9eaca1a3ae117d32a449e20 # v1.2.0
     with:
       go-version: "1.25"
       working-directory: "."
@@ -35,7 +35,7 @@ jobs:
   fmt:
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@b8ded667385dea3fb24d7cf4ef46d870ae03cf8a # v1.2.1
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@2253ff2eda0a3d65f9eaca1a3ae117d32a449e20 # v1.2.0
     with:
       go-version: "1.25"
       working-directory: "."
@@ -97,7 +97,7 @@ jobs:
       # 'test' is requesting 'id-token: write', but is only allowed
       # 'id-token: none'" — confirmed live on this PR.
       id-token: write
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@b8ded667385dea3fb24d7cf4ef46d870ae03cf8a # v1.2.1
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@2253ff2eda0a3d65f9eaca1a3ae117d32a449e20 # v1.2.0
     with:
       go-version: "1.25"
       working-directory: "."

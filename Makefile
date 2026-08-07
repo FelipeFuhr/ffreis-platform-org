@@ -42,6 +42,8 @@ GITLEAKS         ?= gitleaks
 LEFTHOOK_VERSION ?= 1.7.10
 LEFTHOOK_DIR     ?= $(CURDIR)/.bin
 LEFTHOOK_BIN     ?= $(LEFTHOOK_DIR)/lefthook
+COVERAGE_MIN       ?= 75
+MUTATION_THRESHOLD ?= 60
 
 _require_env:
 	@test -n "$(ENV)" || (echo "ENV is required, e.g. make plan ENV=prod" && exit 1)
@@ -53,6 +55,7 @@ _require_fetched: _require_env
 		exit 1)
 
 .PHONY: build build-cli build-lambda go-test go-audit fetch init plan apply destroy nuke fmt fmt-check validate lint test check check-static security coverage \
+        coverage-gate integration-coverage-gate mutation quality-gates \
         secrets-scan-staged lefthook-bootstrap lefthook-install lefthook-run lefthook \
         _require_env _require_fetched
 
@@ -194,6 +197,34 @@ security:
 ## coverage: run terratest with coverage (modules repo only)
 coverage:
 	cd test && go test -v ./... -timeout 30m 2>/dev/null || echo "No terratest found"
+
+## coverage-gate: unit coverage of the Go CLI/Lambda code (cmd/, lambda/) — fails below COVERAGE_MIN
+coverage-gate:
+	@$(GO) test ./cmd/... ./lambda/... -coverprofile=/tmp/platform-org-cov.out -covermode=atomic
+	@pct=$$($(GO) tool cover -func=/tmp/platform-org-cov.out | tail -1 | awk '{gsub("%","",$$3); print $$3}'); \
+	echo "Coverage: $${pct}% (threshold: $(COVERAGE_MIN)%)"; \
+	awk -v total="$$pct" -v min="$(COVERAGE_MIN)" 'BEGIN { exit !(total+0 >= min+0) }' || { \
+		echo "Coverage gate failed: $${pct}% < $(COVERAGE_MIN)%." >&2; exit 1; }
+
+## integration-coverage-gate: run //go:build integration tests in cmd/, lambda/ (no-op if none exist)
+integration-coverage-gate:
+	@if ! grep -rl '^//go:build integration' --include='*.go' cmd lambda >/dev/null 2>&1; then \
+		echo "No '//go:build integration' files found in cmd/, lambda/ — skipping integration-coverage-gate."; \
+		exit 0; \
+	fi; \
+	$(GO) test -tags=integration ./cmd/... ./lambda/... -coverprofile=/tmp/platform-org-intcov.out -covermode=atomic; \
+	pct=$$($(GO) tool cover -func=/tmp/platform-org-intcov.out | tail -1 | awk '{gsub("%","",$$3); print $$3}'); \
+	echo "Integration coverage: $${pct}% (threshold: $(COVERAGE_MIN)%)"; \
+	awk -v total="$$pct" -v min="$(COVERAGE_MIN)" 'BEGIN { exit !(total+0 >= min+0) }' || { \
+		echo "Integration coverage gate failed: $${pct}% < $(COVERAGE_MIN)%." >&2; exit 1; }
+
+## mutation: run mutation testing with gremlins on cmd/, lambda/ (slow — CI only)
+mutation:
+	@which gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) ./cmd/... ./lambda/...
+
+## quality-gates: strict pre-promotion gate for the Go CLI/Lambda code (test + coverage)
+quality-gates: go-test coverage-gate
 
 ## secrets-scan-staged: scan staged diff for secrets
 secrets-scan-staged:

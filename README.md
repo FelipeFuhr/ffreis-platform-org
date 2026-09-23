@@ -12,6 +12,11 @@ This repo is the next layer after `platform-bootstrap`:
 2. `platform-bootstrap fetch` writes the generated Terraform inputs for this repo
 3. `platform-org` runs `terraform init`, `plan`, `apply`, `audit`, and `nuke`
 
+See [ACCOUNT-ARCHITECTURE.md](ACCOUNT-ARCHITECTURE.md) for how the account,
+the four bootstrap→org→shared-infra→product layers, and per-project access
+actually fit together — start there before assuming how credentials or
+shared resources work in this fleet.
+
 ## Layout
 
 ```text

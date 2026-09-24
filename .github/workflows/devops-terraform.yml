@@ -64,7 +64,6 @@ jobs:
     needs: [fmt]
     with:
       scan-path: "terraform"
-      minimum-severity: "HIGH"
       soft-fail: false
 
   checkov:

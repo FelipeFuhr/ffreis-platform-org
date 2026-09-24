@@ -71,7 +71,7 @@ jobs:
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
     secrets:
-      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FELIPEFUHR }}
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FFREIS }}
 
   semgrep:
     permissions:

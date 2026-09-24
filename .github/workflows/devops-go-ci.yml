@@ -30,7 +30,7 @@ jobs:
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
     secrets:
-      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FFREIS }}
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}
 
   fmt:
     permissions:
@@ -59,7 +59,7 @@ jobs:
 
       - name: Configure private Go module access
         env:
-          GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FFREIS }}
+          GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}
         run: |
           set -euo pipefail
           {
@@ -103,7 +103,7 @@ jobs:
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
     secrets:
-      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FFREIS }}
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}
 
   coverage:
     if: ${{ !github.event.pull_request.draft }}
@@ -116,7 +116,7 @@ jobs:
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
       coverage-threshold: 75
     secrets:
-      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FFREIS }}
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   integration-coverage:
@@ -130,7 +130,7 @@ jobs:
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
       coverage-threshold: 75
     secrets:
-      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FFREIS }}
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   mutation:
@@ -145,4 +145,4 @@ jobs:
       packages: "./cmd/... ./lambda/..."
       threshold: 60
     secrets:
-      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_FFREIS }}
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}

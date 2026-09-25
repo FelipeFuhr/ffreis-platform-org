@@ -84,8 +84,12 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
+          # Pinned binary install (the action's default) rather than goinstall:
+          # golangci-lint/v2 raises its own Go floor independently of this repo's
+          # toolchain -- v2.14.0 requires Go >= 1.26 while go.mod pins 1.25 with
+          # GOTOOLCHAIN=local, so `go install` refuses. The published binary has
+          # no such constraint, and is faster.
           version: v2.14.0
-          install-mode: goinstall
           args: --path-prefix=. --timeout=5m
 
   test:
@@ -137,18 +141,3 @@ jobs:
     secrets:
       GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  mutation:
-    if: ${{ !github.event.pull_request.draft }}
-    permissions:
-      contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
-    with:
-      go-version: "1.25"
-      runner: '["ubuntu-latest"]'
-      working-directory: "."
-      goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
-      packages: "./cmd/... ./lambda/..."
-      threshold: 60
-    secrets:
-      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}

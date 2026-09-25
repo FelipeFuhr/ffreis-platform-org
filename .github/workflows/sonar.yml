@@ -31,9 +31,16 @@ jobs:
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-sonar.yml@86fd6e3b73fbe6d4f83280ef2661605d441a20e3 # v1.4.0
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-sonar.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
     with:
-      go-version: "1.24"
+      # go.mod declares `go 1.25.11` and GOTOOLCHAIN=local forbids auto-upgrade,
+      # so the previous "1.24" made `go test` refuse to start before Sonar ever ran.
+      go-version: "1.25"
+      runner: '["ubuntu-latest"]'
       working-directory: "."
+      # Coverage generation runs `go test ./...`, which pulls the private
+      # inventory module; without this the fetch 403s exactly as Go CI did.
+      goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}

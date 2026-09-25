@@ -55,17 +55,6 @@ jobs:
     with:
       scan-ref: "terraform"
 
-  tfsec:
-    permissions:
-      contents: read
-      security-events: write
-      actions: read
-    uses: FelipeFuhr/ffreis-workflows-terraform/.github/workflows/tf-tfsec.yml@5606584d4d99f3f0886517c4e637aa0b19308898 # v1.1.3
-    needs: [fmt]
-    with:
-      scan-path: "terraform"
-      soft-fail: false
-
   checkov:
     permissions:
       contents: read

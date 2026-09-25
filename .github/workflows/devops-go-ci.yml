@@ -24,9 +24,10 @@ jobs:
   mod-tidy:
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@86fd6e3b73fbe6d4f83280ef2661605d441a20e3 # v1.4.0
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
     with:
       go-version: "1.25"
+      runner: '["ubuntu-latest"]'
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
     secrets:
@@ -35,9 +36,10 @@ jobs:
   fmt:
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@86fd6e3b73fbe6d4f83280ef2661605d441a20e3 # v1.4.0
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
     with:
       go-version: "1.25"
+      runner: '["ubuntu-latest"]'
       working-directory: "."
 
   lint:
@@ -82,7 +84,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: v1.64.8
+          version: v2.14.0
           install-mode: goinstall
           args: --path-prefix=. --timeout=5m
 
@@ -97,9 +99,10 @@ jobs:
       # 'test' is requesting 'id-token: write', but is only allowed
       # 'id-token: none'" — confirmed live on this PR.
       id-token: write
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@86fd6e3b73fbe6d4f83280ef2661605d441a20e3 # v1.4.0
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
     with:
       go-version: "1.25"
+      runner: '["ubuntu-latest"]'
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
     secrets:
@@ -109,9 +112,10 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-coverage.yml@86fd6e3b73fbe6d4f83280ef2661605d441a20e3 # v1.4.0
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-coverage.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
     with:
       go-version: "1.25"
+      runner: '["ubuntu-latest"]'
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
       coverage-threshold: 75
@@ -123,9 +127,10 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-integration-coverage.yml@86fd6e3b73fbe6d4f83280ef2661605d441a20e3 # v1.4.0
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-integration-coverage.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
     with:
       go-version: "1.25"
+      runner: '["ubuntu-latest"]'
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
       coverage-threshold: 75
@@ -137,9 +142,10 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: read
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@86fd6e3b73fbe6d4f83280ef2661605d441a20e3 # v1.4.0
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
     with:
       go-version: "1.25"
+      runner: '["ubuntu-latest"]'
       working-directory: "."
       goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
       packages: "./cmd/... ./lambda/..."

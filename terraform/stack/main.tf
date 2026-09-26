@@ -14,7 +14,7 @@ terraform {
 }
 
 module "tags" {
-  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/tagging?ref=v2.0.0"
+  source = "git::https://github.com/FelipeFuhr/ffreis-platform-terraform-modules.git//modules/tagging?ref=ebb613fb5e1bca37ca3a764a8c6bb450c4f8257e" # v2.0.0
 
   project           = "platform-org"
   environment       = "prod"

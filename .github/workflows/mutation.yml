@@ -1,0 +1,40 @@
+name: Mutation Testing
+
+# Moved out of devops-go-ci.yml (was PR-triggered). Upstream
+# FelipeFuhr/ffreis-workflows-go's go-mutation.yml documents its own intended
+# cadence verbatim:
+#   Intended schedule: weekly (Sunday 02:00 UTC) or workflow_dispatch.
+#   Do NOT run on every PR -- mutation testing takes 5-30 min per repo.
+# Running it per-PR here exceeded go-mutation.yml's own hard-coded
+# `timeout-minutes: 30` and was cancelled at 30:15 against ./cmd/... and
+# ./lambda/..., reporting an empty score as a threshold failure. The timeout is
+# not exposed as an input, so the cadence is the thing to fix, not the limit.
+# Matches ffreis-token-vault, ffreis-shamir and ffreis-btc-features, which moved
+# mutation to this same schedule for the same reason.
+
+on:
+  schedule:
+    - cron: "0 2 * * 0" # Sunday 02:00 UTC -- matches go-mutation.yml's documented intent
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    permissions:
+      contents: read
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@82f1d226aeec60e696b6716213e10742caf3875e # v1.6.0
+    with:
+      go-version: "1.25"
+      runner: '["ubuntu-latest"]'
+      working-directory: "."
+      goprivate: "github.com/FelipeFuhr/ffreis-platform-inventory"
+      packages: "./cmd/... ./lambda/..."
+      threshold: 60
+    secrets:
+      GIT_AUTH_TOKEN: ${{ secrets.FLEET_READ_TOKEN_ORG }}

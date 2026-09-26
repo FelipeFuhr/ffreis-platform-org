@@ -239,14 +239,14 @@ func TestDeleteECSTaskDefinitionActiveDeregisterThenDelete(t *testing.T) {
 		return testECSClient(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 			target := r.Header.Get(testAWSHeaderTarget)
-			switch {
-			case target == testECSDescribeTaskTarget:
+			switch target {
+			case testECSDescribeTaskTarget:
 				calls["describe"]++
 				_, _ = io.WriteString(w, `{"taskDefinition":{"taskDefinitionArn":"`+testForceDeleteECSTaskDefinitionARN+`","status":"ACTIVE"}}`)
-			case target == "AmazonEC2ContainerServiceV20141113.DeregisterTaskDefinition":
+			case "AmazonEC2ContainerServiceV20141113.DeregisterTaskDefinition":
 				calls["deregister"]++
 				_, _ = io.WriteString(w, `{"taskDefinition":{"taskDefinitionArn":"`+testForceDeleteECSTaskDefinitionARN+`","status":"INACTIVE"}}`)
-			case target == ecsDeleteTaskDefinitionsTarget:
+			case ecsDeleteTaskDefinitionsTarget:
 				calls["delete"]++
 				_, _ = io.WriteString(w, `{"taskDefinitions":[],"failures":[]}`)
 			default:
@@ -270,13 +270,13 @@ func TestDeleteECSTaskDefinitionInactiveSkipsDeregister(t *testing.T) {
 		return testECSClient(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 			target := r.Header.Get(testAWSHeaderTarget)
-			switch {
-			case target == testECSDescribeTaskTarget:
+			switch target {
+			case testECSDescribeTaskTarget:
 				_, _ = io.WriteString(w, `{"taskDefinition":{"taskDefinitionArn":"arn:...","status":"INACTIVE"}}`)
-			case target == "AmazonEC2ContainerServiceV20141113.DeregisterTaskDefinition":
+			case "AmazonEC2ContainerServiceV20141113.DeregisterTaskDefinition":
 				deregisterCalls++
 				w.WriteHeader(http.StatusInternalServerError)
-			case target == ecsDeleteTaskDefinitionsTarget:
+			case ecsDeleteTaskDefinitionsTarget:
 				_, _ = io.WriteString(w, `{"taskDefinitions":[],"failures":[]}`)
 			default:
 				w.WriteHeader(http.StatusBadRequest)
@@ -298,10 +298,10 @@ func TestDeleteECSTaskDefinitionDeleteFailures(t *testing.T) {
 		return testECSClient(t, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 			target := r.Header.Get(testAWSHeaderTarget)
-			switch {
-			case target == testECSDescribeTaskTarget:
+			switch target {
+			case testECSDescribeTaskTarget:
 				_, _ = io.WriteString(w, `{"taskDefinition":{"taskDefinitionArn":"arn:...","status":"INACTIVE"}}`)
-			case target == ecsDeleteTaskDefinitionsTarget:
+			case ecsDeleteTaskDefinitionsTarget:
 				_, _ = io.WriteString(w, `{"taskDefinitions":[],"failures":[{"arn":"arn:...","reason":"something went wrong"}]}`)
 			default:
 				w.WriteHeader(http.StatusBadRequest)

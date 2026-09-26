@@ -97,7 +97,7 @@ var nativeDeleteHandlers = map[string]nativeResourceDeleteFn{
 	},
 	"resource-groups/group": func(ctx context.Context, resource auditResource, _ bool) (bool, error) {
 		client := newResourceGroupsClient(d.awsCfg)
-		_, err := client.DeleteGroup(ctx, &resourcegroups.DeleteGroupInput{GroupName: sdkaws.String(resource.name)})
+		_, err := client.DeleteGroup(ctx, &resourcegroups.DeleteGroupInput{Group: sdkaws.String(resource.name)})
 		return true, err
 	},
 	"budgets/budget": func(ctx context.Context, resource auditResource, _ bool) (bool, error) {

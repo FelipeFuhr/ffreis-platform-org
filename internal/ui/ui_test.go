@@ -116,7 +116,7 @@ func TestIsTTY(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateTemp: %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	if IsTTY(file) {
 		t.Fatal("regular file must not be treated as tty")
 	}
@@ -125,7 +125,7 @@ func TestIsTTY(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open(%q): %v", os.DevNull, err)
 	}
-	defer devNull.Close()
+	defer func() { _ = devNull.Close() }()
 	if IsTTY(devNull) {
 		t.Fatal("os.DevNull is a character device but not an interactive terminal")
 	}

@@ -69,10 +69,10 @@ func TestFindOrganizationalUnitIDByNameFound(t *testing.T) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		call++
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListRoots:
+		switch target {
+		case testOrganizationsListRoots:
 			_, _ = io.WriteString(w, `{"Roots":[{"Id":"r-0001","Name":"Root","Arn":"arn:aws:organizations::123:root/o-abc/r-0001"}]}`)
-		case target == testOrganizationsListOUsForParent:
+		case testOrganizationsListOUsForParent:
 			_, _ = io.WriteString(w, `{"OrganizationalUnits":[{"Id":"`+testOrganizationEnvOUID+`","Name":"environments","Arn":"arn:..."}]}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -91,10 +91,10 @@ func TestFindOrganizationalUnitIDByNameNotFound(t *testing.T) {
 	client := testOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListRoots:
+		switch target {
+		case testOrganizationsListRoots:
 			_, _ = io.WriteString(w, `{"Roots":[{"Id":"r-0001","Name":"Root","Arn":"arn:..."}]}`)
-		case target == testOrganizationsListOUsForParent:
+		case testOrganizationsListOUsForParent:
 			_, _ = io.WriteString(w, `{"OrganizationalUnits":[{"Id":"ou-0001-xyz","Name":"other"}]}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -114,10 +114,10 @@ func TestFindOrganizationalUnitIDByNamePaginated(t *testing.T) {
 	client := testOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListRoots:
+		switch target {
+		case testOrganizationsListRoots:
 			_, _ = io.WriteString(w, `{"Roots":[{"Id":"r-0001","Name":"Root","Arn":"arn:..."}]}`)
-		case target == testOrganizationsListOUsForParent:
+		case testOrganizationsListOUsForParent:
 			listCalls++
 			if listCalls == 1 {
 				_, _ = io.WriteString(w, `{"OrganizationalUnits":[{"Id":"ou-first","Name":"other"}],"NextToken":"page2"}`)
@@ -189,10 +189,10 @@ func TestFindOrganizationTargetIDByNameEnvironmentsOU(t *testing.T) {
 	client := testOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListRoots:
+		switch target {
+		case testOrganizationsListRoots:
 			_, _ = io.WriteString(w, `{"Roots":[{"Id":"r-0001","Name":"Root","Arn":"arn:..."}]}`)
-		case target == testOrganizationsListOUsForParent:
+		case testOrganizationsListOUsForParent:
 			_, _ = io.WriteString(w, `{"OrganizationalUnits":[{"Id":"`+testOrganizationEnvOUID+`","Name":"environments"}]}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -245,10 +245,10 @@ func TestDetachOrganizationPolicyBySyntheticNameTargetNotFound(t *testing.T) {
 	overrideOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListPolicies:
+		switch target {
+		case testOrganizationsListPolicies:
 			_, _ = io.WriteString(w, `{"Policies":[{"Id":"p-abc123","Name":"my-policy","Arn":"arn:..."}]}`)
-		case target == testOrganizationsListAccounts:
+		case testOrganizationsListAccounts:
 			// target name not found in accounts
 			_, _ = io.WriteString(w, `{"Accounts":[]}`)
 		default:
@@ -264,12 +264,12 @@ func TestDetachOrganizationPolicyBySyntheticNameSuccess(t *testing.T) {
 	overrideOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListPolicies:
+		switch target {
+		case testOrganizationsListPolicies:
 			_, _ = io.WriteString(w, `{"Policies":[{"Id":"p-abc123","Name":"my-policy","Arn":"arn:..."}]}`)
-		case target == testOrganizationsListAccounts:
+		case testOrganizationsListAccounts:
 			_, _ = io.WriteString(w, `{"Accounts":[{"Id":"111122223333","Name":"my-account","Status":"ACTIVE"}]}`)
-		case target == testOrganizationsDetachPolicy:
+		case testOrganizationsDetachPolicy:
 			_, _ = io.WriteString(w, `{}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -296,10 +296,10 @@ func TestDeleteOrganizationPolicyByNameSuccess(t *testing.T) {
 	overrideOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListPolicies:
+		switch target {
+		case testOrganizationsListPolicies:
 			_, _ = io.WriteString(w, `{"Policies":[{"Id":"p-abc123","Name":"my-policy","Arn":"arn:..."}]}`)
-		case target == testOrganizationsDeletePolicy:
+		case testOrganizationsDeletePolicy:
 			_, _ = io.WriteString(w, `{}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -316,10 +316,10 @@ func TestDeleteOrganizationOUByNameNotFound(t *testing.T) {
 	overrideOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListRoots:
+		switch target {
+		case testOrganizationsListRoots:
 			_, _ = io.WriteString(w, `{"Roots":[{"Id":"r-0001","Name":"Root","Arn":"arn:..."}]}`)
-		case target == testOrganizationsListOUsForParent:
+		case testOrganizationsListOUsForParent:
 			_, _ = io.WriteString(w, `{"OrganizationalUnits":[]}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -334,12 +334,12 @@ func TestDeleteOrganizationOUByNameSuccess(t *testing.T) {
 	overrideOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListRoots:
+		switch target {
+		case testOrganizationsListRoots:
 			_, _ = io.WriteString(w, `{"Roots":[{"Id":"r-0001","Name":"Root","Arn":"arn:..."}]}`)
-		case target == testOrganizationsListOUsForParent:
+		case testOrganizationsListOUsForParent:
 			_, _ = io.WriteString(w, `{"OrganizationalUnits":[{"Id":"`+testOrganizationEnvOUID+`","Name":"environments"}]}`)
-		case target == testOrganizationsDeleteOU:
+		case testOrganizationsDeleteOU:
 			_, _ = io.WriteString(w, `{}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -366,10 +366,10 @@ func TestCloseOrganizationAccountByNameSuccess(t *testing.T) {
 	overrideOrganizationsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(testHTTPHeaderContentType, testHTTPContentTypeAMZJSON11)
 		target := r.Header.Get(testOrganizationsHeaderTarget)
-		switch {
-		case target == testOrganizationsListAccounts:
+		switch target {
+		case testOrganizationsListAccounts:
 			_, _ = io.WriteString(w, `{"Accounts":[{"Id":"111122223333","Name":"my-account","Status":"ACTIVE"}]}`)
-		case target == testOrganizationsCloseAccount:
+		case testOrganizationsCloseAccount:
 			_, _ = io.WriteString(w, `{}`)
 		default:
 			w.WriteHeader(http.StatusBadRequest)

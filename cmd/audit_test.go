@@ -116,7 +116,7 @@ func TestClassifyResource_OwnedAllTags(t *testing.T) {
 func TestClassifyResource_OwnedMissingTag(t *testing.T) {
 	m := testResourceTagMapping(
 		"arn:aws:s3:::ffreis-tf-state-runtime",
-		testTag("Stack", "flemming"),
+		testTag("Stack", "acme"),
 		testTag("ManagedBy", "terraform"),
 	)
 	r := classifyResource(m)

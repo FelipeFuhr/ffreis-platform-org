@@ -50,7 +50,7 @@ the fleet's responsibility-keyed read logic, shared with future dashboard
 Lambdas. `go.mod` requires it at a pinned GitHub pseudo-version, and its transitive
 `github.com/ffreis/platform-cli` is `replace`d to the
 `github.com/FelipeFuhr/ffreis-platform-cli` pseudo-version (the same pattern
-`ffreis-flemming-infra` uses). Fetching needs `GOPRIVATE=github.com/FelipeFuhr/*`.
+a private infra repo (e.g. `ffreis-acme-infra`) uses). Fetching needs `GOPRIVATE=github.com/FelipeFuhr/*`.
 
 `audit` and `doctor` both support `--json` (machine-readable contract; see
 `cmd/audit_json.go` for the audit projection). Deliberately NOT done: the older

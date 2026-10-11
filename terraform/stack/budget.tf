@@ -6,7 +6,7 @@
 # gets its own budget, so nothing untracked can spiral.
 #
 # Per-project attribution lives elsewhere: each product's infra stack
-# (petlook-infra, ffreis-flemming-infra, ffreis-platform-shared-infra, …) owns a
+# (a product's infra repo, a website-infra repo, the platform-shared-infra repo, …) owns a
 # CostCenter-tag-scoped monthly budget. Those budgets and these are complementary
 # — do NOT add cost filters here, and do NOT add more unfiltered budgets in the
 # product stacks (that was the 2026-06 bug: every product budget tracked the

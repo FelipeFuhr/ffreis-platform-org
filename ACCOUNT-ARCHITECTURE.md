@@ -32,7 +32,7 @@ never sideways or up.
 | 0 — Bootstrap | `ffreis-platform-bootstrap` | The `platform-admin` IAM role itself, the bootstrap registry table, the ROOT Terraform state bucket/lock table, the platform-wide events SNS topic, the top-level monthly AWS Budget |
 | 1 — Org | `ffreis-platform-org` (this repo) | Org-level Terraform + the `accounts`/`cost`/`resources` introspection CLI (backed by `ffreis-platform-inventory`) |
 | 2 — Shared infra | `ffreis-platform-shared-infra` | Cross-cutting resources every product reads by reference: the shared VPC, build-cache buckets, the fleet CDN, SES domain identity, WAF IP sets, per-product least-privilege Terraform plan/apply roles, the free-tier monitor Lambda |
-| 3 — Products | every `*-infra` repo (`petlook-infra`, `ffreis-flemming-infra`, `casaboa-infra`, ...) | That product's own resources, reading Layer 1/2 outputs via `data` sources |
+| 3 — Products | every `*-infra` repo (`acme-infra`, `ffreis-widgetco-infra`, `globex-infra`, ...) | That product's own resources, reading Layer 1/2 outputs via `data` sources |
 
 `platform-bootstrap init` (Layer 0) is the only thing that creates the
 `platform-admin` role. Everything above it either assumes that role
@@ -57,7 +57,7 @@ CI/ops job explicitly assuming it.
 by Terraform, nothing stored.** Every Lambda gets its own role
 (`<product>-<function>-<env>-exec`, ~200 of them today), trusted only by
 `lambda.amazonaws.com`, with an inline policy scoped to exactly what that
-function touches. Example: `petlook-ask-prod-exec` can read exactly one S3
+function touches. Example: `acme-ask-prod-exec` can read exactly one S3
 bucket and invoke exactly one Bedrock model + one guardrail. No AWS access
 key exists for this — it's pure IAM role assumption at invoke time.
 
@@ -65,8 +65,8 @@ key exists for this — it's pure IAM role assumption at invoke time.
 (`token.actions.githubusercontent.com`) is registered account-wide. Each
 product's Terraform plan/apply roles trust it scoped to that repo (and
 often that environment) via the `sub` claim — e.g.
-`petlook-terraform-plan-prod` trusts only
-`repo:ffreis-org/petlook-infra:environment:prod`. A workflow calls
+`acme-terraform-plan-prod` trusts only
+`repo:ffreis-org/acme-infra:environment:prod`. A workflow calls
 `AssumeRoleWithWebIdentity` directly; no `AWS_ACCESS_KEY_ID` secret is ever
 set for these flows. Layer 2 provisions the standard shape of these roles
 (`*-terraform-plan` read-only, `*-terraform-apply` write, ExternalId +
@@ -85,9 +85,9 @@ Two genuinely different, non-overlapping systems — don't confuse them:
 
 - **Per-project application secrets** (API keys, DB credentials, SMTP
   creds — anything that isn't AWS access itself) live in one DynamoDB table
-  per product per environment: `petlook-secrets-{dev,prod}`,
-  `flemming-secrets-{dev,prod}`, `ffreis-secrets-{dev,prod}`,
-  `casaboa-secrets-dev`, `gitgate-secrets-dev`, and others as products are
+  per product per environment: `acme-secrets-{dev,prod}`,
+  `widgetco-secrets-{dev,prod}`, `ffreis-secrets-{dev,prod}`,
+  `globex-secrets-dev`, `initech-secrets-dev`, and others as products are
   added. Each is small (single-digit item counts), simple hash-key schema,
   read directly by that product's own Lambdas. Decentralized by design —
   there is no central secrets store for this class.
@@ -113,15 +113,15 @@ as of 2026-09-23 (verify freshness before trusting a specific name):
 - **One VPC** (`vpc-04471ef721cf9507c`, `10.0.0.0/16`) — backs the fleet's
   self-hosted CI runner cluster (`ffreis-cluster-*` tables, cluster-warden
   roles).
-- **Route53**: 4 hosted zones — `ffreis.com`, `petlook.app`,
-  `flemming.com.br`, `pocketworldarcade.app` — with `ffreis.com` acting as
-  parent for most product subdomains (`dashboard.ffreis.com`,
-  `forma.ffreis.com`, `casaboa.ffreis.com`, and a dozen more), each with its
+- **Route53**: 4 hosted zones — `ffreis.com`, `acme.app`,
+  `widgetco.com.br`, `hooli.app` — with `ffreis.com` acting as
+  parent for most product subdomains (`contoso.ffreis.com`,
+  `northwind.ffreis.com`, `globex.ffreis.com`, and a dozen more), each with its
   own ACM cert (22 issued certs in `us-east-1` total).
 - **Terraform state**: a *shared bucket per environment tier* holding a
   *per-product key prefix*, not a bucket per product —
   `ffreis-tf-state-{dev,prod,root,runtime}`, each containing prefixes like
-  `petlook/`, `flemming/`, `platform-shared-infra/`. `root` holds the
+  `acme/`, `widgetco/`, `platform-shared-infra/`. `root` holds the
   `platform-org/` bootstrap-layer state; the naming convention elsewhere in
   this workspace referencing a `dynamoctl-tf-locks-*` table is stale — the
   real tables are `ffreis-tf-locks-{dev,prod,root,runtime}`.

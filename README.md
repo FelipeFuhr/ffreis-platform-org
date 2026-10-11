@@ -110,7 +110,7 @@ contract — the same shape dashboard Lambdas consume.
 
 # Tagged resources grouped by responsibility (region-scoped)
 ./bin/platform-org resources --group-by CostCenter --json | jq '.summary'
-./bin/platform-org resources --cost-center petlook
+./bin/platform-org resources --cost-center acme
 ```
 
 These commands are backed by the shared

@@ -23,7 +23,7 @@ import (
 //   - Domain         (per-domain or per-subdomain enum)
 //
 // CostCenter is the most important addition — without activation, Cost
-// Explorer cannot group spend by the per-product values (flemming, petlook,
+// Explorer cannot group spend by the per-product values (acme, widgetco,
 // ffreis-website, …) the new tagging schema emits.
 var CostAllocationTags = []string{
 	"Stack", "Project", "Layer", "Owner", "Environment",

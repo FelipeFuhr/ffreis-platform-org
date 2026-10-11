@@ -9,8 +9,8 @@ drift.
 ## It is one AWS account, not several
 
 `aws organizations describe-organization` succeeds — there is a real AWS
-Organization (`o-v4ger0h0d5`) — but `aws organizations list-accounts`
-returns exactly **one account** (`331258178424`, "ffreis"). There are no
+Organization (`o-example1234`) — but `aws organizations list-accounts`
+returns exactly **one account** (`123456789012`, "ffreis"). There are no
 member accounts today. The Organization exists (for future SCP capability,
 and because `platform-bootstrap`/`platform-org` are built to provision a
 "foundational AWS multi-account platform"), but in its current state it is
@@ -44,7 +44,7 @@ touch `platform-admin` at all.
 
 **1. Humans and ops tooling: assume `platform-admin`.** One IAM user
 (`ffreis-admin`) has no permissions of its own beyond `sts:AssumeRole` into
-`arn:aws:iam::331258178424:role/platform-admin`, which carries
+`arn:aws:iam::123456789012:role/platform-admin`, which carries
 `Effect:Allow, Action:*, Resource:*` (with an explicit `Deny` on
 root-identity mutations — MFA device, password policy, account contact
 info, region enable/disable, account closure). This is the fleet's one
@@ -110,7 +110,7 @@ only non-AWS application secrets are stored, and per-project, not centrally.
 Real resources, checked against live AWS state, not just Terraform source,
 as of 2026-09-23 (verify freshness before trusting a specific name):
 
-- **One VPC** (`vpc-04471ef721cf9507c`, `10.0.0.0/16`) — backs the fleet's
+- **One VPC** (`vpc-0123456789abcdef0`, `10.0.0.0/16`) — backs the fleet's
   self-hosted CI runner cluster (`ffreis-cluster-*` tables, cluster-warden
   roles).
 - **Route53**: 4 hosted zones — `ffreis.com`, `petlook.app`,
